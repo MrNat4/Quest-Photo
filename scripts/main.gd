@@ -128,7 +128,7 @@ func _run_decoder_probe() -> void:
   file.store_string(JSON.stringify(report, "  "))
  # RuntimeProbe reports each codec independently; its embedded encoded bytes
  # exercise native decoders in the APK, without the editor's image importer.
- decoder_summary = "Image decoder report saved (JPEG / PNG / WebP / BMP)."
+ decoder_summary = "Decoders OK: JPEG / PNG / WebP / BMP" if report.get("all_ok", false) else "Image decoder failure: see runtime-image-report.json"
  print("Runtime image decoders: ", JSON.stringify(report))
  _update_labels()
 

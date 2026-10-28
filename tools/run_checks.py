@@ -26,7 +26,12 @@ with tempfile.TemporaryDirectory(prefix="quest-photo-tests-") as temporary:
         ("assets", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py", "-v"]),
         ("core", base + ["--script", "res://tests/test_core.gd"]),
         ("export", base + ["--script", "res://tests/test_export.gd"]),
+        ("formats", base + ["--script", "res://tests/test_formats.gd"]),
+        ("layouts", base + ["--script", "res://tests/test_layouts.gd"]),
+        ("storage", base + ["--script", "res://tests/test_storage.gd"]),
+        ("gallery", base + ["--script", "res://tests/test_gallery.gd"]),
         ("viewer", base + ["--script", "res://tests/test_viewer.gd"]),
+        ("integration", base + ["--script", "res://tests/test_integration.gd"]),
         ("startup", base + ["--quit-after", "10"]),
         ("build-script-syntax", ["bash", "-n", "tools/build_android.sh"]),
     ]

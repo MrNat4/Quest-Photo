@@ -50,7 +50,16 @@ func decode_bytes(bytes: PackedByteArray) -> Image:
   "png": result = decoded.load_png_from_buffer(bytes)
   "jpeg": result = decoded.load_jpg_from_buffer(bytes)
   "webp": result = decoded.load_webp_from_buffer(bytes)
-  "bmp": result = decoded.load_bmp_from_buffer(bytes)
+  "bmp":
+   # Godot 4.6.3's BMP loader requires positive height. Normalize top-down
+   # DIB headers on a private byte copy, then restore the raster direction.
+   var top_down := bytes.size() >= 54 and _u32(bytes,14,true) >= 40 and _signed32(_u32(bytes,22,true)) < 0
+   var bmp_bytes := bytes.duplicate() if top_down else bytes
+   if top_down:
+    bmp_bytes.encode_s32(22, int(info.height))
+   result = decoded.load_bmp_from_buffer(bmp_bytes)
+   if top_down and result == OK:
+    decoded.flip_y()
  if result != OK:
   error_message = "Image decode failed: " + error_string(result)
   return null

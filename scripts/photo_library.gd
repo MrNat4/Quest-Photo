@@ -91,7 +91,8 @@ func inspect_dimensions(bytes: PackedByteArray) -> Vector2i:
 func load_image(entry: Dictionary, max_side: int = 4096) -> Image:
  error_message = ""
  var path := str(entry.get("path", ""))
- var file := FileAccess.open(path, FileAccess.READ)
+ var raw_path := path + ".bin" if path in ["res://assets/sample_photo.jpg", "res://assets/stereo_test_sbs.png"] else path
+ var file := FileAccess.open(raw_path, FileAccess.READ)
  if file == null:
   error_message = "Cannot read photograph: " + error_string(FileAccess.get_open_error())
   return null
