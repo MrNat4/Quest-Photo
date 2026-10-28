@@ -49,3 +49,26 @@ See TESTING.md for evidence scope and fixed defects.
 
 Future editing, GIF/video and exploratory reconstruction remain unimplemented.
 Maintain the working viewer and tests when adding those features.
+
+
+## 2026-10-28 — recovered and completed 0.2.0 integration
+
+Preserved interrupted work in b73824b before editing. Integrated fixes/tests in
+d256b2f. Existing OpenXR settings, action map and stereo shader are unchanged.
+User supplied physical-headset confirmation for the original 0.1.0 foundation.
+
+Surviving modules included native SAF importer, persistent copy/name metadata,
+runtime format decoder, full/half SBS and OU normalization, paged gallery/cache,
+async photo loader and embedded codec diagnostics. Completed integration and
+found/fixed a top-down BMP engine limitation and packaged sample byte access.
+All 4 asset tests, 393 Godot assertions and the storage suite pass; exported PCK
+startup and codec probes pass on Linux. Android preflight remains blocked.
+
+README/BUILD/STORAGE/TESTING describe controls, Windows build, native chooser
+limitations and exact device acceptance. GIF, animated WebP and video deferred.
+AI depth inference plus genuine depth-based reprojection is the next major
+milestone after gallery hardware acceptance. No model/stub depth is bundled.
+
+Next session: inspect Git; run tests; collect Quest 0.2.0 gallery/import results.
+Prioritize native chooser/return-to-VR fixes if hardware exposes them. Preserve
+the working stereo foundation and complete all device acceptance before AI work.

@@ -1,3 +1,12 @@
+# Version 0.2.0 build note
+
+The user successfully built and tested 0.1.0 on Quest 3. Preserve that working
+Godot 4.6.3 SDK/JDK configuration and signing key. This update keeps the same
+package, OpenXR settings, ARM64 architecture and non-Gradle export. Version code
+is now 2. No native plugins or additional storage permissions are required.
+New native picker/gallery device testing is still pending. The Linux workspace
+still lacks Android build dependencies; use the Windows instructions below.
+
 # Build and install
 
 The project targets **Godot 4.6.3 stable**, Android ARM64, and the Compatibility
@@ -76,7 +85,7 @@ export QUEST_EXPORT_TEMPLATES=/path/to/extracted/templates
 ```
 
 The script creates isolated Godot settings under `.build/`, makes a local debug
-signing key, imports the project, exports `build/quest-photo-m1-debug.apk`, checks
+signing key, imports the project, exports `build/quest-photo-0.2.0-debug.apk`, checks
 the APK signature, and rejects an unexpected Internet permission. It writes a
 checksum, package metadata, and permission report into `build/`. Keep the debug
 key to install later debug builds as updates; never use this key for production.
@@ -99,7 +108,7 @@ Meta's developer-mode/sideload setup may require Meta's own developer account.
 
 ```bash
 adb devices
-adb install -r build/quest-photo-m1-debug.apk
+adb install -r build/quest-photo-0.2.0-debug.apk
 adb shell monkey -p org.questphoto.viewer -c android.intent.category.LAUNCHER 1
 ```
 

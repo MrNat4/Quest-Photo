@@ -1,138 +1,113 @@
-# Quest Photo
+# Quest Photo 0.2.0
 
-An offline Godot 4.6.3 / OpenXR photo viewer under active development for Meta
-Quest 3. **Version 0.1.0 is an initial viewer implementation, not a completed
-2D-to-3D converter. No APK or physical-headset verification is available yet.**
+Godot **4.6.3** offline OpenXR photo viewer for Meta Quest 3. This continues the
+0.1.0 viewer: the user confirmed VR launch, per-eye rendering, calibration depth,
+sample images and most controls on a physical Quest. The OpenXR configuration,
+action map and stereo shader are preserved. **New 0.2.0 Android import/gallery
+behavior still requires headset acceptance.** No AI conversion is included yet.
 
-The current implementation starts directly in a known stereo calibration image.
-It also includes a real public-domain sample photograph, JPEG/PNG loading, per-eye
-SBS sampling, 2D/stereo switching, zoom, pan, physical scale, rotation, controller
-positioning, convergence, eye swapping, and per-photo viewing preferences.
-Ordinary photos remain 2D: no AI depth model is bundled or simulated.
+## Build
 
-## Run and test
+Open `project.godot` with your existing Godot 4.6.3 installation, install matching
+Android templates, and use the **Quest 3** export preset. Keep your existing
+Android SDK/JDK paths and signing key. Export `build/quest-photo-0.2.0-debug.apk`.
+Package remains `org.questphoto.viewer`, version code is 2. Updating with the same
+key preserves the library; uninstalling or clearing data deletes private copies.
+No plugin, Gradle build, Google services or broad storage permission was added.
+Detailed Windows instructions: [BUILD.md](docs/BUILD.md).
 
-Install Godot **4.6.3 stable**. From this directory:
+## Gallery and importing
 
-```bash
-godot --editor --path . --import --quit
-godot --path . --xr-mode off
-./tools/test.sh
-```
+1. **Hold left grip and press Y** to open/return to the gallery.
+2. Move either thumbstick to highlight one of six photographs or a button.
+   Release the stick between moves. Press **A** or the right trigger to activate.
+3. Select **Import**. In Android's system chooser, select one or multiple local
+   images from Pictures or Download. Use the system Back action to cancel.
+4. Imported photos are copied into the app's private persistent library. The
+   gallery refreshes automatically; restarting the app keeps completed imports.
+5. Previous/Next buttons change gallery pages. **B** or Close returns to viewing.
+   Refresh rescans the library. Layout changes the last highlighted photo's mode.
 
-The test script additionally needs Python 3 and Pillow for calibration pixel
-checks. Pillow is a development dependency only. The application itself uses
-Godot built-ins and has no Internet permission, network client, account system,
-Google Play Services, or cloud processing.
+The system chooser uses Godot's built-in Android Storage Access Framework.
+No ADB transfer is needed for importing. Whether a working chooser is present
+and usable in VR depends on Quest firmware; see [STORAGE.md](docs/STORAGE.md)
+for the precise native-picker limitation and troubleshooting. The pipeline
+validates files, copies them in a worker, reports failures, and deduplicates by
+content hash. Up to 64 images per batch, 32 MiB and 32 megapixels per source.
+Cancel copying with B; completed imports remain. Originals are never modified.
 
-For an OpenXR-capable desktop with a working runtime, omit `--xr-mode off`.
-See [BUILD.md](docs/BUILD.md) for Android dependencies, build script, and sideload
-instructions. Source import and headless tests work in the current environment;
-Android builds are blocked by missing toolchain downloads.
+Six thumbnails are requested per page. RAM cache holds 18 textures and disk cache
+128 thumbnails; a single thumbnail worker avoids decoding the collection at once.
+Selected user photographs decode off the scene thread in VR. Very large libraries
+still require a directory/metadata scan at refresh; performance needs measurement
+on Quest. Names longer than 28 characters are abbreviated on thumbnail tiles.
 
-## Controls
+## Image formats and layouts
 
-| Quest controller | Action |
+Runtime buffer decoders support JPEG/JPG, PNG, static WebP and BMP, with JPEG EXIF
+orientation. Unsupported/corrupt/oversized files report errors. Animated WebP is
+rejected explicitly. GIF, animated WebP playback and video remain deferred.
+
+| Filename suffix before extension | Detected layout |
 | --- | --- |
-| Right A | Next photograph |
-| Left X | Toggle original left image / stereo |
-| Right B | Reset settings and place screen in front of you |
-| Left Y | Toggle control help |
-| Right stick up/down | Physical screen size |
-| Right stick left/right | Screen rotation |
-| Left stick | Pan the image (zoom in first) |
-| Hold left trigger + right stick up/down | Image zoom |
-| Hold left trigger + right stick left/right | Stereo convergence |
-| Hold right grip, move/rotate controller | Position/orient screen |
-| Left stick click | Place screen in front of current headset direction |
-| Right stick click | Open stereo calibration |
-| Both triggers + A | Swap stereo eyes |
-| Right trigger + right stick click | Export full SBS |
-| Left trigger + right stick click | Export half SBS |
-| Both triggers + right stick click | Switch PNG/JPG export format |
+| ordinary name | 2D |
+| `.sbs` | Full SBS, left eye first |
+| `.half-sbs` | Half-width SBS |
+| `.ou` | Full top/bottom, left eye above |
+| `.half-ou` | Half-height top/bottom |
 
-Controls remain subject to Quest hardware acceptance testing. A visible help
-panel and status label describe current mode and settings. Unsupported ordinary
-photo conversion is explicitly labelled `AI conversion pending`.
+Use Layout repeatedly to cycle 2D → full SBS → half SBS → full top/bottom → half
+top/bottom. Choices persist per photo. This is explicit filename detection, not
+AI recognition. Half layouts restore the intended aspect; each eye is resized
+independently and normalized to the existing full-SBS renderer. Top/bottom
+requires even height and SBS even width. Manual layout selection does not infer
+stereo depth from an ordinary photograph.
 
-Desktop controls: O open, N/P next/previous, T calibration, Space 2D/stereo,
-W/S physical size, Q/E rotation, +/- zoom, arrows pan, I/J/K/L position, U/D
-distance, R reset, brackets convergence, V preview eye, F swap eyes, H help,
-F5 refresh library, F6/F7 full/half SBS export, F8 PNG/JPG format, Escape quit.
-Desktop preview displays one selected eye;
-it does not establish correct headset output.
+## Viewer controls
 
-## Local photographs
+| Input | Action |
+| --- | --- |
+| Left grip + Y | Gallery / return |
+| A / left grip + A | Next / previous photo |
+| X / left grip + X | 2D-stereo toggle / cycle layout |
+| B / Y | Reset / toggle help |
+| Right stick | Size and roll |
+| Left stick | Pan after zooming |
+| Left trigger + right stick | Zoom and convergence |
+| Right grip | Grab/position/rotate screen |
+| Left stick click | Recenter |
+| Right stick click | Calibration |
+| Both triggers + A | Swap eyes |
+| Right / left trigger + right stick click | Full / half SBS export |
+| Both triggers + right stick click | PNG/JPG export format |
 
-The library reads `user://photos`. The absolute path is shown in desktop mode.
-Use O to open any JPEG/PNG on desktop. A filename ending in `.sbs.png`, `.sbs.jpg`
-or `.sbs.jpeg` is interpreted as **full SBS, left eye first**; other names are
-ordinary 2D images. Half-SBS import/aspect detection is not implemented.
+Desktop: G gallery, O import, M layout, N/P next/previous, T calibration,
+Space 2D/stereo, W/S size, Q/E roll, +/- zoom, arrows pan, I/J/K/L position,
+U/D distance, R reset, brackets convergence, V preview eye, F swap, H help,
+F5 refresh, F6/F7 full/half export, F8 export codec. In gallery use arrows,
+Enter and Escape. Desktop native import needs an available system file chooser.
 
-On Quest, the first app launch creates its private folder. Until an Android
-Storage Access Framework picker is implemented, transfer photos to a debug
-build with ADB (paths containing spaces should be quoted):
+View preferences and layout choices persist. World placement recenters each
+launch. Exports save under `user://exports` and preserve crop, zoom, convergence
+and eye order, with full-resolution eyes capped at 2048 pixels per side. Physical
+screen size/roll/position are excluded. Exports in 2D duplicate the original view;
+they are not AI conversions. Android destination-picker export remains future work.
 
-```bash
-adb shell run-as org.questphoto.viewer mkdir -p files/photos
-adb shell run-as org.questphoto.viewer sh -c '"cat > files/photos/example.jpg"' < /path/to/example.jpg
-```
+## Verification and continuation
 
-Restart the app after transfer. The expected Godot Android `user://` location is
-`files/`; verify using `adb shell run-as org.questphoto.viewer ls files` on the
-first real APK. This workflow requires a debuggable sideloaded build and has not
-been exercised against a headset here. It is a developer import workflow, not
-the final user-facing file browser.
+Run `./tools/test.sh` on Linux, or `python tools/run_checks.py` with Godot on PATH
+and Pillow installed (Windows skips Bash-only syntax validation). The app itself
+requires neither Python nor Pillow. Tests cover real image pixels, persistence,
+layout normalization, cache bounds, import logic, synthetic controllers and
+integrated asynchronous flows. A packaged PCK was also run on Linux.
 
-Images over 32 MiB or 32 megapixels are rejected before decode. The viewer scales
-to at most 4096 pixels on either dimension per eye. PNG/JPEG only; animated GIFs,
-EXIF autorotation, color-profile management and half-SBS import are not yet
-implemented. Loading is synchronous and may pause the viewer for large photos.
+Each launch runs tiny embedded codec checks and writes
+`user://runtime-image-report.json`; desktop displays the result and startup logs
+include it. These run inside the APK too, providing evidence on your device
+without relying on editor texture imports.
 
-Viewing preferences save after changes and on pause/switch. They include zoom,
-pan, size, roll, convergence, eye order and stereo mode. World position resets
-in front of the user each launch; it is deliberately not restored across rooms.
-Original photographs are never overwritten. These preferences are **not** yet
-nondestructive depth-editing project files.
-
-## Export
-
-Exports run on a background worker and save to `user://exports`, with unique
-filenames and completion/error messages. PNG is the default; JPG uses quality
-95. Each full-resolution eye is capped at 2048 pixels per side, preserving aspect.
-Full SBS places two full eyes side by side; half SBS halves each eye's horizontal
-resolution. Select the corresponding mode in the receiving stereo player.
-
-Zoom, pan, convergence and eye order are applied to exported pixels. Crop
-boundaries round to source pixels, so subpixel edge placement may differ slightly
-from the shader. Physical screen placement, size and roll are presentation
-transforms and are excluded. Exporting an ordinary photo or 2D mode writes two
-identical eye views; it does not create depth. Depth adjustments await Milestone 2.
-
-For a debug APK, retrieve an export using its actual filename:
-
-```bash
-adb shell run-as org.questphoto.viewer ls files/exports
-adb exec-out run-as org.questphoto.viewer cat files/exports/NAME.sbs.png > NAME.sbs.png
-```
-
-This retrieval path needs first-device verification. A user-facing Android
-destination picker remains planned. Exported half-SBS files are not supported
-as correctly proportioned imports by this version.
-
-## Project layout and status
-
-- `scripts/main.gd`: XR lifecycle, scene construction, controller/desktop input.
-- `scripts/photo_library.gd`: bounded local loading and library enumeration.
-- `scripts/view_state.gd`: validated per-photo settings and persistence.
-- `scripts/stereo_export.gd`: bounded offline SBS image export.
-- `shaders/stereo.gdshader`: per-eye texture selection and crop/convergence.
-- `openxr_action_map.tres`: explicit Touch controller bindings.
-- `assets/`: real sample photograph and deterministic stereo fixtures.
-- `tests/`: behavioral and pixel tests; no simulated test is called hardware validation.
-- [ROADMAP.md](docs/ROADMAP.md), [PROGRESS.md](docs/PROGRESS.md),
-  [TESTING.md](docs/TESTING.md), [KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
-
-Project code is MIT licensed; generated calibration artwork is CC0-1.0. Sample photo
-attribution and third-party licensing are in [assets/ATTRIBUTION.md](assets/ATTRIBUTION.md)
-and [THIRD_PARTY.md](docs/THIRD_PARTY.md).
+See [TESTING.md](docs/TESTING.md), [KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md),
+[ROADMAP.md](docs/ROADMAP.md), and [PROGRESS.md](docs/PROGRESS.md).
+Code: MIT. Calibration artwork: CC0. Sample photograph: public domain;
+[attribution](assets/ATTRIBUTION.md). The `.bin` sample copies retain original
+encoded bytes for reliable CPU decoding in exported packages.

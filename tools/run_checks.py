@@ -35,6 +35,8 @@ with tempfile.TemporaryDirectory(prefix="quest-photo-tests-") as temporary:
         ("startup", base + ["--quit-after", "10"]),
         ("build-script-syntax", ["bash", "-n", "tools/build_android.sh"]),
     ]
+    if os.name == "nt":
+        steps = [(name, command) for name, command in steps if name != "build-script-syntax"]
     for name, command in steps:
         print(f"Running {name}…", flush=True)
         try:

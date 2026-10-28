@@ -1,6 +1,6 @@
 # Roadmap
 
-## Milestone 1 — viewer (implemented, acceptance incomplete)
+## Milestone 1 — viewer (user verified on Quest 3, 2026-10-28)
 
 - [x] Godot 4.6.3 project and OpenXR configuration.
 - [x] Known stereo target with eye-specific labels and signed disparities.
@@ -11,9 +11,18 @@
 - [x] Android export preset/build script and actual export attempt.
 - [ ] Install missing Android toolchain and produce signed APK.
 - [ ] Verify shader rendering on a graphics backend.
-- [ ] Quest 3 acceptance: eye isolation, depth direction, controls, lifecycle, comfort.
+- [x] User confirmed VR launch, per-eye calibration depth, sample images and most controls.
+- [ ] Exhaustive lifecycle, comfort and performance acceptance.
 
-## Milestone 2 — automatic depth conversion (not implemented)
+## Milestone 2 — gallery and still images (0.2.0)
+
+Implemented native single/multiple SAF import into persistent private copies,
+six-tile paged gallery with thumbnail caches, JPEG/PNG/static WebP/BMP runtime
+loading, EXIF orientation, full/half SBS and top/bottom layouts with persistent
+manual correction. Automated tests pass. Android chooser and new VR flows require
+physical-headset acceptance before declaring milestone success.
+
+## Next major milestone — automatic depth conversion (not implemented)
 
 1. First complete known-stereo headset acceptance; never use an AI output to
    diagnose eye-routing errors.
@@ -37,12 +46,13 @@ Why retain Godot: OpenXR, texture/shader rendering, controller input and Android
 export already fit the viewer. AI inference belongs behind a narrow native
 adapter; replacing the entire framework is not justified at this point.
 
-## Milestone 3 — files and exports (partial)
+## Remaining file/project work
 
 - [x] Local app-private JPEG/PNG library and desktop picker.
 - [x] Validated per-image viewing settings.
-- [ ] VR browser with thumbnails and controller pointer interaction.
-- [ ] Android Storage Access Framework import/export adapter.
+- [x] VR browser with thumbnails and controller focus navigation.
+- [x] Built-in SAF import implementation; hardware verification pending.
+- [ ] Android export destination picker.
 - [x] Full/half SBS PNG/JPEG export with current crop/convergence; CPU pixel
       tests pass, controller export on hardware remains unverified.
 - [ ] Versioned project container preserving original reference, depth, masks,
@@ -55,7 +65,7 @@ feathering/smoothing; selected depth offset and contrast/variation adjustment.
 Keep immutable model depth separate from edit layers. Test undo/redo, project
 round trips and edge behavior. Object segmentation is optional after this works.
 
-## Milestone 5 — GIFs
+## Future — GIF and animated WebP
 
 Add a licensed frame decoder that handles GIF disposal/timing correctly. Process
 one frame at a time on disk, preserve frame times and use temporal depth smoothing.
@@ -67,7 +77,7 @@ Conversion can be slow; realtime inference is not required.
 
 Profile actual Quest frame time, memory, decode/inference/export latency, thermal
 behavior and crash recovery. Add caches and texture budgets based on measurement.
-Then investigate approximately ten-second videos using the frame pipeline.
+Video is very low priority; do not implement playback or conversion in the gallery or next AI milestone.
 
 ## Research only
 

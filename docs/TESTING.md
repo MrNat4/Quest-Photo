@@ -1,3 +1,46 @@
+# Version 0.2.0 verification — 2026-10-28
+
+All checks pass: 4 Python asset tests; 393 Godot assertions (58 core, 30 export,
+69 formats, 50 layouts, 74 gallery/cache, 97 existing viewer, 15 integrated flow),
+plus the storage import suite. Integration covers importing four codecs, library
+rediscovery, gallery selection, asynchronous VR loading, persistent manual layout
+and latest-request selection. These tests run on Linux with a dummy renderer.
+
+Exported `build/quest-photo-0.2.0.pck` using the Quest preset and launched it with
+Godot outside editor import. Startup and all four embedded codec pixel checks
+passed. Sample encoded `.bin` copies avoid relying on source textures in the APK.
+This is packaged-resource verification, not Android execution.
+
+Android preflight still fails for missing SDK, full JDK and matching templates;
+no 0.2.0 APK was generated here. The user independently confirmed 0.1.0 physical
+Quest launch, per-eye stereo/calibration, samples and most controller controls.
+All new 0.2.0 hardware paths remain unverified.
+
+## Quest acceptance for this update
+
+1. Build with the existing Windows Godot 4.6.3 setup and same signing key; install
+   as an update. Repeat LEFT/RIGHT and near/screen/far calibration checks.
+2. Hold left grip + Y; verify legible gallery, thumbstick focus, A/right-trigger
+   activation, B return, page buttons, and previous photo with left grip + A.
+3. Import from Pictures and Download, first single then multiple JPEG/PNG/WebP/BMP
+   files. Confirm readable filenames, progress, EXIF rotation and no ADB import.
+4. Cancel the chooser, reopen it, and return to VR. Confirm tracking/stereo resume.
+   Firmware without ACTION_OPEN_DOCUMENT may fail at native launch; STORAGE.md
+   documents this release gate precisely.
+5. Restart the application and verify imported copies and manual layout choices.
+   Try full/half SBS and full/half top-bottom; confirm aspect, eye swap,
+   convergence and existing zoom/position/export controls.
+6. Test malformed/oversized and duplicate files, then many gallery pages; report
+   memory, responsiveness and readability. Animated WebP should be rejected.
+7. Startup logs and `user://runtime-image-report.json` should report all four
+   native codecs passing inside the APK. Share any failures with Quest OS version.
+
+Full output: `build/final-checks.log`, `build/checks/`, `build/pack-runtime.log`.
+
+---
+
+The following is the historical 0.1.0 record, retained for continuity.
+
 # Verification record — 2026-10-27
 
 Engine: Godot 4.6.3.stable.official.7d41c59c4, Linux x86_64.
