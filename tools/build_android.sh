@@ -75,8 +75,8 @@ if [[ ! -f "$GODOT_ANDROID_KEYSTORE_DEBUG_PATH" ]]; then
     -validity 10000 -dname 'CN=Android Debug,O=Android,C=US'
 fi
 "$GODOT_BIN" --headless --xr-mode off --editor --path "$PROJECT_DIR" --import --quit
-"$GODOT_BIN" --headless --xr-mode off --path "$PROJECT_DIR" --export-debug 'Quest 3' "$PROJECT_DIR/build/quest-photo-m1-debug.apk"
-apk="$PROJECT_DIR/build/quest-photo-m1-debug.apk"
+"$GODOT_BIN" --headless --xr-mode off --path "$PROJECT_DIR" --export-debug 'Quest 3' "$PROJECT_DIR/build/quest-photo-0.2.0-debug.apk"
+apk="$PROJECT_DIR/build/quest-photo-0.2.0-debug.apk"
 test -s "$apk"
 "$QUEST_ANDROID_SDK/build-tools/$QUEST_BUILD_TOOLS/apksigner" verify --verbose "$apk"
 "$QUEST_ANDROID_SDK/build-tools/$QUEST_BUILD_TOOLS/aapt" dump permissions "$apk" > "$PROJECT_DIR/build/apk-permissions.txt"

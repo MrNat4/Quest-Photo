@@ -4,6 +4,11 @@ const State = preload("res://scripts/view_state.gd")
 const Library = preload("res://scripts/photo_library.gd")
 const STEREO_SHADER = preload("res://shaders/stereo.gdshader")
 const Exporter = preload("res://scripts/stereo_export.gd")
+const Gallery = preload("res://scripts/photo_gallery.gd")
+const Importer = preload("res://scripts/photo_importer.gd")
+const Loader = preload("res://scripts/photo_loader.gd")
+const Layout = preload("res://scripts/stereo_layout.gd")
+const RuntimeProbe = preload("res://scripts/runtime_image_probe.gd")
 var state = State.new()
 var library = Library.new()
 var current_index := 0
@@ -33,6 +38,15 @@ var export_thread: Thread
 var export_busy := false
 var export_jpeg := false
 var awaiting_head_pose := false
+var gallery: Node3D
+var importer: Node
+var photo_loader: Node
+var gallery_open := false
+var gallery_stick_latched := false
+var gallery_trigger_latched := false
+var pending_photo_index := -1
+var close_gallery_after_load := false
+var decoder_summary := ""
 
 func _ready() -> void:
  _build_scene()
@@ -40,6 +54,8 @@ func _ready() -> void:
  library.refresh()
  show_photo(0)
  recenter()
+ _build_library_ui()
+ _run_decoder_probe()
  print("Quest Photo ready; XR active: ", xr_active, "; library items: ", library.entries.size())
 
 func _build_scene() -> void:
@@ -67,7 +83,7 @@ func _build_scene() -> void:
  status = _label(32, 0.0013)
  anchor.add_child(status)
  help = _label(24, 0.0012)
- help.text = "A: next photo   X: 2D / stereo   B: reset   Y: help\nRight stick: size / rotate   Left stick: pan\nHold left trigger + right stick: zoom / convergence\nRight grip: grab   Left stick click: recenter\nRight stick click: calibration; + right/left trigger: full/half SBS export\nBoth triggers + right stick click: PNG/JPG; + A: swap eyes"
+ help.text = "Left grip + Y: GALLERY / IMPORT   A: next   Left grip + A: previous\nX: 2D / stereo   Left grip + X: image layout   B: reset   Y: help\nRight stick: size / rotate   Left stick: pan\nLeft trigger + right stick: zoom / convergence   Right grip: grab\nLeft stick click: recenter   Right stick click: calibration\nRight/left trigger + right stick click: full/half SBS export\nBoth triggers + right stick click: PNG/JPG; + A: swap eyes"
  anchor.add_child(help)
  var layer := CanvasLayer.new()
  add_child(layer)
@@ -81,6 +97,124 @@ func _build_scene() -> void:
  file_dialog.filters = PackedStringArray(["*.jpg,*.jpeg,*.png ; Photographs"])
  file_dialog.file_selected.connect(_open_desktop_file)
  layer.add_child(file_dialog)
+
+func _build_library_ui() -> void:
+ gallery = Gallery.new()
+ gallery.visible = false
+ add_child(gallery)
+ gallery.global_transform = anchor.global_transform
+ gallery.set_entries(library.entries)
+ gallery.photo_selected.connect(func(index: int): _navigate_photo(index, true))
+ gallery.import_requested.connect(_request_import)
+ gallery.refresh_requested.connect(_refresh_library)
+ gallery.layout_requested.connect(func(): _cycle_layout(gallery.selected_entry_index()))
+ gallery.close_requested.connect(func(): _set_gallery_open(false))
+ importer = Importer.new()
+ add_child(importer)
+ importer.progress.connect(_import_progress)
+ importer.completed.connect(_import_completed)
+ importer.cancelled.connect(func(): _notice("Import cancelled."))
+ photo_loader = Loader.new()
+ add_child(photo_loader)
+ photo_loader.loaded.connect(_photo_loaded)
+
+func _run_decoder_probe() -> void:
+ var report: Dictionary = RuntimeProbe.run()
+ report["engine"] = Engine.get_version_info().string
+ report["platform"] = OS.get_name()
+ report["xr_active"] = xr_active
+ var file := FileAccess.open("user://runtime-image-report.json", FileAccess.WRITE)
+ if file != null:
+  file.store_string(JSON.stringify(report, "  "))
+ # RuntimeProbe reports each codec independently; its embedded encoded bytes
+ # exercise native decoders in the APK, without the editor's image importer.
+ decoder_summary = "Image decoder report saved (JPEG / PNG / WebP / BMP)."
+ print("Runtime image decoders: ", JSON.stringify(report))
+ _update_labels()
+
+func _set_gallery_open(value: bool) -> void:
+ if gallery == null:
+  return
+ dragging = false
+ gallery_open = value
+ gallery_stick_latched = true
+ gallery_trigger_latched = _trigger_held(right)
+ gallery.visible = value
+ anchor.visible = not value
+ if value:
+  recenter_gallery()
+  gallery.set_entries(library.entries)
+  gallery.select_index(current_index)
+  gallery.set_status("Stick: choose · A/trigger: open · B: close · Layout: change selected photo")
+ _update_labels()
+
+func recenter_gallery() -> void:
+ var forward := -camera.global_basis.z
+ forward.y = 0.0
+ if forward.length_squared() < 0.01:
+  forward = Vector3.FORWARD
+ gallery.global_position = camera.global_position + forward.normalized() * 2.4
+ gallery.look_at(camera.global_position, Vector3.UP, true)
+
+func _request_import() -> void:
+ if importer.is_busy():
+  return
+ photo_loader.cancel()
+ pending_photo_index = -1
+ _set_gallery_open(true)
+ var result: Error = importer.request_import(true)
+ if result != OK:
+  _notice(importer.error_message)
+
+func _import_progress(message: String, fraction: float) -> void:
+ _notice(message + ("  %d%%" % roundi(fraction * 100.0) if fraction > 0.0 else ""))
+
+func _import_completed(imported: PackedStringArray, errors: PackedStringArray) -> void:
+ _refresh_library()
+ var message := "Imported %d photo(s)." % imported.size()
+ if not errors.is_empty():
+  message += " %d failed: %s" % [errors.size(), errors[0]]
+  # Full errors remain available after an immersive dialog has closed.
+  var file := FileAccess.open("user://last-import-errors.txt", FileAccess.WRITE)
+  if file != null:
+   file.store_string("\n".join(errors))
+ if not imported.is_empty():
+  for index in library.entries.size():
+   if str(library.entries[index].path) == imported[0]:
+    gallery.select_index(index)
+    break
+ _notice(message)
+
+func _refresh_library() -> void:
+ _save_view()
+ photo_loader.cancel()
+ pending_photo_index = -1
+ var previous_path := str(current_entry.get("path", ""))
+ library.refresh()
+ for index in library.entries.size():
+  if str(library.entries[index].path) == previous_path:
+   current_index = index
+   break
+ if gallery != null:
+  gallery.set_entries(library.entries)
+ _notice("Library refreshed: %d images." % library.entries.size() if library.error_message.is_empty() else library.error_message)
+
+func _cycle_layout(index: int) -> void:
+ if index < 0 or index >= library.entries.size():
+  return
+ var entry: Dictionary = library.entries[index]
+ var old: String = library.layout_for(entry)
+ var next: String = Layout.VALUES[(Layout.VALUES.find(old) + 1) % Layout.VALUES.size()]
+ var result: Error = library.set_layout(entry, next)
+ if result != OK:
+  _notice(library.error_message)
+  return
+ gallery.cache.invalidate(str(entry.path))
+ gallery.set_entries(library.entries)
+ if str(entry.path) == str(current_entry.get("path", "")):
+  _navigate_photo(index)
+ var names := {"mono": "2D", "sbs_full": "Full SBS", "sbs_half": "Half SBS", "ou_full": "Full top/bottom", "ou_half": "Half top/bottom"}
+ _notice(str(entry.title) + " · Layout: " + str(names[next]))
 
 func _label(font_size: int, pixel_size: float) -> Label3D:
  var label := Label3D.new()
@@ -147,6 +281,8 @@ func recenter() -> void:
  forward = forward.normalized()
  anchor.global_position = camera.global_position + forward * 2.4
  anchor.look_at(camera.global_position, Vector3.UP, true)
+ if gallery != null:
+  gallery.global_transform = anchor.global_transform
  _apply_view()
 
 func show_photo(index: int) -> void:
@@ -159,8 +295,11 @@ func show_photo(index: int) -> void:
   current_index = candidate_index
   _notice(library.error_message)
   return
+ _display_photo(candidate_index, entry, texture)
+
+func _display_photo(index: int, entry: Dictionary, texture: Texture2D) -> void:
  _save_view()
- current_index = candidate_index
+ current_index = index
  current_entry = entry
  state = State.new()
  state.load_from(library.settings_path(str(entry.path)))
@@ -172,6 +311,41 @@ func show_photo(index: int) -> void:
  var width := minf(2.0, 1.5 * aspect)
  (panel.mesh as QuadMesh).size = Vector2(width, width / aspect)
  _apply_view()
+
+func _navigate_photo(index: int, close_gallery: bool = false) -> void:
+ if library.entries.is_empty():
+  return
+ var target := wrapi(index, 0, library.entries.size())
+ var entry: Dictionary = library.entries[target]
+ # Built-in resources are tiny and already imported. User photos decode off-thread
+ # in VR, while the existing synchronous API remains usable for desktop/tests.
+ if not xr_active or str(entry.path).begins_with("res://"):
+  photo_loader.cancel()
+  pending_photo_index = -1
+  show_photo(target)
+  if close_gallery and str(current_entry.get("path", "")) == str(entry.path):
+   _set_gallery_open(false)
+  return
+ pending_photo_index = target
+ close_gallery_after_load = close_gallery
+ photo_loader.request(entry)
+ _notice("Loading " + str(entry.title) + "…")
+
+func _photo_loaded(_request_id: int, entry: Dictionary, image: Image, message: String) -> void:
+ var target := pending_photo_index
+ pending_photo_index = -1
+ if target < 0:
+  return
+ current_index = target
+ if image == null:
+  _notice(str(entry.title) + ": " + message)
+  return
+ _display_photo(target, entry, ImageTexture.create_from_image(image))
+ if close_gallery_after_load:
+  _set_gallery_open(false)
+
+func _navigation_index() -> int:
+ return pending_photo_index if pending_photo_index >= 0 else current_index
 
 func _apply_view() -> void:
  if panel == null:
@@ -201,7 +375,9 @@ func _update_labels() -> void:
  if Time.get_ticks_msec() < notice_until:
   status.text += "\n" + last_notice
  help.visible = help_visible
- desktop_label.text = "QUEST PHOTO · desktop preview (%s eye)\n%s\n\nO: open photo   N/P: next/previous   T: calibration   Space: 2D/stereo\nW/S: size   Q/E: rotate   +/-: zoom   Arrows: pan\nI/J/K/L: position   U/D: distance   R: reset/recenter\n[/]: convergence   V: preview eye   F: swap eyes   H: help\nF5: refresh   F6/F7: full/half SBS export   F8: PNG/JPG   Esc: quit\n\nPhoto folder: %s" % ["left" if preview_eye == 0 else "right", status.text, ProjectSettings.globalize_path(Library.PHOTO_DIR)]
+ desktop_label.text = "QUEST PHOTO · desktop preview (%s eye)\n%s\n\nG: gallery   O: import   N/P: next/previous   M: image layout\nT: calibration   Space: 2D/stereo   W/S: size   Q/E: rotate\n+/-: zoom   Arrows: pan   I/J/K/L: position   U/D: distance\nR: reset   [/]: convergence   V: preview eye   F: swap eyes   H: help\nF5: refresh   F6/F7: full/half export   F8: PNG/JPG   Esc: quit\n\n%s" % ["left" if preview_eye == 0 else "right", status.text, decoder_summary]
+ if gallery_open:
+  desktop_label.text = "GALLERY · Arrows: select   Enter: open   G/Esc: return\nO: import   F5: refresh   M: selected image layout\n" + decoder_summary
 
 func _process(delta: float) -> void:
  if xr_active and session_focused:
@@ -223,8 +399,24 @@ func _axis(value: Vector2) -> Vector2:
  return Vector2(0 if absf(value.x) < 0.18 else value.x, 0 if absf(value.y) < 0.18 else value.y)
 
 func _process_controllers(delta: float) -> void:
+ if importer != null and importer.is_busy():
+  dragging = false
+  return
  var l := _axis(left.get_vector2("thumbstick")) if left.get_has_tracking_data() else Vector2.ZERO
  var r := _axis(right.get_vector2("thumbstick")) if right.get_has_tracking_data() else Vector2.ZERO
+ if gallery_open:
+  dragging = false
+  var axis := r if r.length() > l.length() else l
+  if axis.length() < 0.25:
+   gallery_stick_latched = false
+  elif axis.length() > 0.65 and not gallery_stick_latched:
+   gallery_stick_latched = true
+   gallery.move_focus(Vector2(axis.x, -axis.y))
+  var pressed := _trigger_held(right)
+  if pressed and not gallery_trigger_latched:
+   gallery.activate()
+  gallery_trigger_latched = pressed
+  return
  if l != Vector2.ZERO or r != Vector2.ZERO:
   state.pan += Vector2(l.x, -l.y) * delta * 0.3 / state.zoom
   if _trigger_held(left):
@@ -249,8 +441,20 @@ func _process_controllers(delta: float) -> void:
 func _left_button(action: StringName) -> void:
  if not session_focused:
   return
+ if importer != null and importer.is_busy():
+  return
+ if action == "secondary" and _grip_held(left):
+  _set_gallery_open(not gallery_open)
+  return
+ if gallery_open:
+  if action == "thumbstick_click":
+   recenter()
+  return
  match action:
   "primary":
+   if _grip_held(left):
+    _cycle_layout(current_index)
+    return
    state.stereo_enabled = not state.stereo_enabled
    _changed()
   "secondary":
@@ -261,13 +465,23 @@ func _left_button(action: StringName) -> void:
 func _right_button(action: StringName) -> void:
  if not session_focused:
   return
+ if importer != null and importer.is_busy():
+  if action == "secondary":
+   importer.cancel_import()
+  return
+ if gallery_open:
+  if action == "primary":
+   gallery.activate()
+  elif action == "secondary":
+   _set_gallery_open(false)
+  return
  match action:
   "primary":
    if _trigger_held(left) and _trigger_held(right):
     state.swap_eyes = not state.swap_eyes
     _changed()
    else:
-    show_photo(current_index + 1)
+    _navigate_photo(_navigation_index() + (-1 if _grip_held(left) else 1))
   "secondary": _reset_view()
   "thumbstick_click":
    if _trigger_held(left) and _trigger_held(right):
@@ -277,7 +491,10 @@ func _right_button(action: StringName) -> void:
    elif _trigger_held(left):
     _export_view(true)
    else:
-    show_photo(0)
+    _navigate_photo(0)
+
+func _grip_held(controller: XRController3D) -> bool:
+ return controller.get_has_tracking_data() and controller.get_float("grip") > 0.65
 
 func _trigger_held(controller: XRController3D) -> bool:
  return controller.get_has_tracking_data() and controller.get_float("trigger") > 0.6
@@ -348,6 +565,8 @@ func _notice(message: String) -> void:
  notice_until = Time.get_ticks_msec() + 6000
  if status != null:
   _update_labels()
+ if gallery != null and gallery_open:
+  gallery.set_status(message.left(150))
 
 func _open_desktop_file(path: String) -> void:
  var entry := {"path": path, "title": path.get_file(), "sbs": path.get_basename().to_lower().ends_with(".sbs")}
@@ -357,16 +576,34 @@ func _open_desktop_file(path: String) -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
  if not event is InputEventKey or not event.pressed or file_dialog.visible:
   return
+ if importer != null and importer.is_busy():
+  if event.keycode == KEY_ESCAPE:
+   importer.cancel_import()
+  return
+ if event.keycode == KEY_G:
+  _set_gallery_open(not gallery_open)
+  return
+ if gallery_open:
+  match event.keycode:
+   KEY_LEFT: gallery.move_focus(Vector2.LEFT)
+   KEY_RIGHT: gallery.move_focus(Vector2.RIGHT)
+   KEY_UP: gallery.move_focus(Vector2.UP)
+   KEY_DOWN: gallery.move_focus(Vector2.DOWN)
+   KEY_ENTER, KEY_KP_ENTER: gallery.activate()
+   KEY_ESCAPE: _set_gallery_open(false)
+   KEY_O: _request_import()
+   KEY_F5: _refresh_library()
+   KEY_M: _cycle_layout(gallery.selected_entry_index())
+  return
  match event.keycode:
   KEY_ESCAPE:
    _save_view()
    get_tree().quit()
-  KEY_O:
-   if not xr_active:
-    file_dialog.popup_centered_ratio(0.8)
-  KEY_N: show_photo(current_index + 1)
-  KEY_P: show_photo(current_index - 1)
-  KEY_T: show_photo(0)
+  KEY_O: _request_import()
+  KEY_M: _cycle_layout(current_index)
+  KEY_N: _navigate_photo(_navigation_index() + 1)
+  KEY_P: _navigate_photo(_navigation_index() - 1)
+  KEY_T: _navigate_photo(0)
   KEY_SPACE: state.stereo_enabled = not state.stereo_enabled
   KEY_W: state.panel_scale *= 1.05
   KEY_S: state.panel_scale /= 1.05
@@ -390,10 +627,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
   KEY_V: preview_eye = 1 - preview_eye
   KEY_F: state.swap_eyes = not state.swap_eyes
   KEY_H: help_visible = not help_visible
-  KEY_F5:
-   _save_view()
-   library.refresh()
-   show_photo(0)
+  KEY_F5: _refresh_library()
   KEY_F6: _export_view(false)
   KEY_F7: _export_view(true)
   KEY_F8: _toggle_export_format()

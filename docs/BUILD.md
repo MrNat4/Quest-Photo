@@ -4,18 +4,45 @@ The project targets **Godot 4.6.3 stable**, Android ARM64, and the Compatibility
 renderer. There is no Google Play Services dependency and no network permission.
 The app runs offline; a build machine initially needs downloaded tools.
 
-## Current environment (2026-10-27)
+## Current environment and device report (2026-10-28)
 
 Godot 4.6.3 and a Java 21 runtime are present. Android SDK, Android export templates,
 `javac`, and `jarsigner` are absent. A download attempt failed immediately with
-`curl: (7) Failed to connect to proxy port 8080`. No APK has been generated.
+`curl: (7) Failed to connect to proxy port 8080`. No APK has been generated in this
+cloud environment. The user reports building 0.1.0 externally and successfully
+viewing stereo on their Quest; the new gallery/import changes require a new build
+and separate headset testing.
 `tools/build_android.sh --check` reports every missing build dependency without
 downloading anything or writing an incomplete APK.
 
 A real `godot --headless --xr-mode off --export-debug 'Quest 3' ...` attempt
 also failed with exit code 1: missing both matching APK templates, Java SDK path,
 Android SDK directories, `adb`, and `apksigner`. The preset was recognized by
-Godot; it has not been validated against a generated APK or a headset.
+Godot. The cloud export pipeline remains unverified with an installed toolchain.
+
+## Windows export using the existing working setup
+
+Keep the same Godot 4.6.3 executable, export templates, package name and signing
+key used for the successful 0.1.0 build. Import this project's `project.godot` in
+Godot. In **Editor → Editor Settings → Export → Android**, set the full JDK path
+and Android SDK path. In **Project → Export**, select **Quest 3**, retain ARM64
+and OpenXR, and export a debug APK. The current project uses the standard APK
+template, so **Use Gradle Build** remains disabled. Native SAF import uses Godot's
+built-in Android bridge and does not require adding any permission or plugin.
+
+With the editor paths already configured, the equivalent PowerShell command is:
+
+```powershell
+New-Item -ItemType Directory -Force .\build | Out-Null
+& 'C:\Tools\Godot_v4.6.3-stable_win64.exe' --headless --xr-mode off --path . --export-debug 'Quest 3' '.\build\quest-photo-debug.apk'
+& 'C:\Android\Sdk\platform-tools\adb.exe' install -r '.\build\quest-photo-debug.apk'
+```
+
+Replace executable/SDK paths with the existing local locations. If Godot reports
+missing export templates, install **4.6.3 stable** templates from its template
+manager. The Linux shell helper below is optional and is not required on Windows.
+Do not uninstall the working APK to fix an update error until its local data has
+been backed up. See [STORAGE.md](STORAGE.md) for native-picker testing and limits.
 
 ## Install dependencies on a Linux development machine
 

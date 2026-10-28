@@ -1,20 +1,25 @@
 class_name PhotoLibrary
 extends RefCounted
 
+const Decoder = preload("res://scripts/image_decoder.gd")
+const Layout = preload("res://scripts/stereo_layout.gd")
 const PHOTO_DIR := "user://photos"
 const SETTINGS_DIR := "user://views"
-const MAX_FILE_BYTES := 32 * 1024 * 1024
-const MAX_PIXELS := 32 * 1024 * 1024
+const METADATA_DIR := "user://metadata"
+const MAX_FILE_BYTES := Decoder.MAX_FILE_BYTES
+const MAX_PIXELS := Decoder.MAX_PIXELS
+const EXTENSIONS := ["png", "jpg", "jpeg", "webp", "bmp"]
 var entries: Array[Dictionary] = []
 var error_message := ""
 
 func refresh() -> void:
+ error_message = ""
  entries.clear()
  entries.append({"path": "res://assets/stereo_test_sbs.png", "title": "Stereo calibration", "sbs": true})
- if ResourceLoader.exists("res://assets/sample_photo.jpg"):
-  entries.append({"path": "res://assets/sample_photo.jpg", "title": "Sample photograph · 2D", "sbs": false})
+ entries.append({"path": "res://assets/sample_photo.jpg", "title": "Sample photograph · 2D", "sbs": false})
  DirAccess.make_dir_recursive_absolute(PHOTO_DIR)
  DirAccess.make_dir_recursive_absolute(SETTINGS_DIR)
+ DirAccess.make_dir_recursive_absolute(METADATA_DIR)
  var directory := DirAccess.open(PHOTO_DIR)
  if directory == null:
   error_message = "Cannot open photo folder: " + error_string(DirAccess.get_open_error())
@@ -22,53 +27,70 @@ func refresh() -> void:
  var names := directory.get_files()
  names.sort()
  for filename in names:
-  if filename.get_extension().to_lower() in ["png", "jpg", "jpeg"]:
-   entries.append({"path": PHOTO_DIR.path_join(filename), "title": filename,
-    "sbs": filename.get_basename().to_lower().ends_with(".sbs")})
+  if filename.get_extension().to_lower() in EXTENSIONS:
+   var path := PHOTO_DIR.path_join(filename)
+   var original := original_name(path)
+   entries.append({"path": path, "title": original})
+ for entry in entries:
+  var layout := layout_for(entry)
+  entry.layout = layout
+  entry.sbs = layout != "mono"
 
 func settings_path(path: String) -> String:
  return SETTINGS_DIR.path_join(path.sha256_text() + ".cfg")
 
-# Read dimensions before decoding so highly compressed giant files are rejected.
-func inspect_dimensions(bytes: PackedByteArray) -> Vector2i:
- if bytes.size() >= 24 and bytes.slice(0, 8) == PackedByteArray([137, 80, 78, 71, 13, 10, 26, 10]):
-  if _be32(bytes, 8) != 13 or bytes.slice(12, 16).get_string_from_ascii() != "IHDR":
-   return Vector2i.ZERO
-  return Vector2i(_be32(bytes, 16), _be32(bytes, 20))
- if bytes.size() < 4 or bytes[0] != 255 or bytes[1] != 216:
-  return Vector2i.ZERO
- var offset := 2
- while offset + 3 < bytes.size():
-  if bytes[offset] != 255:
-   return Vector2i.ZERO
-  while offset < bytes.size() and bytes[offset] == 255:
-   offset += 1
-  if offset >= bytes.size():
-   break
-  var marker := bytes[offset]
-  offset += 1
-  if marker == 217 or marker == 218:
-   break
-  if marker == 1 or (marker >= 208 and marker <= 215):
-   continue
-  if offset + 2 > bytes.size():
-   break
-  var length := int(bytes[offset]) * 256 + int(bytes[offset + 1])
-  if length < 2 or offset + length > bytes.size():
-   break
-  if marker in [192, 193, 194, 195, 197, 198, 199, 201, 202, 203, 205, 206, 207] and length >= 8:
-   return Vector2i(int(bytes[offset + 5]) * 256 + int(bytes[offset + 6]), int(bytes[offset + 3]) * 256 + int(bytes[offset + 4]))
-  offset += length
- return Vector2i.ZERO
+func metadata_path(path: String) -> String:
+ return METADATA_DIR.path_join(path.sha256_text() + ".cfg")
 
-func _be32(bytes: PackedByteArray, start: int) -> int:
- return (int(bytes[start]) << 24) | (int(bytes[start + 1]) << 16) | (int(bytes[start + 2]) << 8) | int(bytes[start + 3])
+func original_name(path: String) -> String:
+ var config := ConfigFile.new()
+ if config.load(path + ".import.cfg") == OK:
+  var value: Variant = config.get_value("photo", "original_name", "")
+  if value is String and not value.is_empty():
+   return value.get_file()
+ return path.get_file()
 
-func load_photo(entry: Dictionary) -> Texture2D:
+func layout_for(entry: Dictionary) -> String:
+ var config := ConfigFile.new()
+ if config.load(metadata_path(str(entry.get("path", "")))) == OK:
+  var saved: Variant = config.get_value("photo", "layout", "")
+  if saved is String and saved in Layout.VALUES:
+   return saved
+ var explicit: Variant = entry.get("layout", "")
+ if explicit is String and explicit in Layout.VALUES:
+  return explicit
+ var detected: String = Layout.detect(original_name(str(entry.get("path", ""))))
+ if detected != "mono":
+  return detected
+ return "sbs_full" if bool(entry.get("sbs", false)) else "mono"
+
+func set_layout(entry: Dictionary, layout: String) -> Error:
  error_message = ""
- var path := str(entry.path)
- if path.begins_with("res://"):
-  return load(path) as Texture2D
+ if layout not in Layout.VALUES or str(entry.get("path", "")).is_empty():
+  error_message = "Unknown stereo layout."
+  return ERR_INVALID_PARAMETER
+ var result := DirAccess.make_dir_recursive_absolute(METADATA_DIR)
+ if result != OK:
+  error_message = "Cannot create layout metadata folder: " + error_string(result)
+  return result
+ var config := ConfigFile.new()
+ config.set_value("photo", "layout", layout)
+ result = config.save(metadata_path(str(entry.path)))
+ if result != OK:
+  error_message = "Cannot save stereo layout: " + error_string(result)
+  return result
+ entry.layout = layout
+ entry.sbs = layout != "mono"
+ return OK
+
+func inspect_dimensions(bytes: PackedByteArray) -> Vector2i:
+ return Decoder.new().inspect_dimensions(bytes)
+
+## CPU-only and worker-safe. Each worker owns its PhotoLibrary and entry copy.
+## Returns mono or canonical full SBS after orientation/layout normalization.
+func load_image(entry: Dictionary, max_side: int = 4096) -> Image:
+ error_message = ""
+ var path := str(entry.get("path", ""))
  var file := FileAccess.open(path, FileAccess.READ)
  if file == null:
   error_message = "Cannot read photograph: " + error_string(FileAccess.get_open_error())
@@ -77,35 +99,23 @@ func load_photo(entry: Dictionary) -> Texture2D:
   error_message = "Photo exceeds the 32 MiB file limit. Resize before importing."
   return null
  var bytes := file.get_buffer(file.get_length())
- var size := inspect_dimensions(bytes)
- if size.x <= 0 or size.y <= 0 or size.x * size.y > MAX_PIXELS:
-  error_message = "Invalid image or photo exceeds 32 megapixels."
+ file.close()
+ var decoder = Decoder.new()
+ var decoded: Image = decoder.decode_bytes(bytes)
+ if decoded == null:
+  error_message = decoder.error_message
   return null
- if bool(entry.sbs) and size.x % 2 != 0:
-  error_message = "SBS images must have an even width."
+ var layout := layout_for(entry)
+ var normalizer = Layout.new()
+ var image: Image = normalizer.normalize(decoded, layout, max_side)
+ if image == null:
+  error_message = normalizer.error_message
   return null
- var photo := Image.new()
- var result := photo.load_png_from_buffer(bytes) if path.get_extension().to_lower() == "png" else photo.load_jpg_from_buffer(bytes)
- if result != OK:
-  error_message = "Image decode failed: " + error_string(result)
-  return null
- var max_width := 8192 if bool(entry.sbs) else 4096
- var ratio := minf(1.0, minf(float(max_width) / photo.get_width(), 4096.0 / photo.get_height()))
- if ratio < 1.0:
-  var width := maxi(2, int(photo.get_width() * ratio))
-  if bool(entry.sbs):
-   width -= width % 2
-  var height := maxi(1, int(photo.get_height() * ratio))
-  if bool(entry.sbs):
-   # Each eye must have an independent filter boundary, including at the seam.
-   var eye_width := photo.get_width() / 2
-   var left_eye := photo.get_region(Rect2i(0, 0, eye_width, photo.get_height()))
-   var right_eye := photo.get_region(Rect2i(eye_width, 0, eye_width, photo.get_height()))
-   left_eye.resize(width / 2, height, Image.INTERPOLATE_LANCZOS)
-   right_eye.resize(width / 2, height, Image.INTERPOLATE_LANCZOS)
-   photo = Image.create_empty(width, height, false, left_eye.get_format())
-   photo.blit_rect(left_eye, Rect2i(0, 0, width / 2, height), Vector2i.ZERO)
-   photo.blit_rect(right_eye, Rect2i(0, 0, width / 2, height), Vector2i(width / 2, 0))
-  else:
-   photo.resize(width, height, Image.INTERPOLATE_LANCZOS)
- return ImageTexture.create_from_image(photo)
+ entry.layout = layout
+ entry.sbs = layout != "mono"
+ return image
+
+## Main-thread convenience wrapper. Worker consumers should use load_image.
+func load_photo(entry: Dictionary) -> Texture2D:
+ var image := load_image(entry)
+ return ImageTexture.create_from_image(image) if image != null else null
