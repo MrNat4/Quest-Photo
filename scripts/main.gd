@@ -43,7 +43,6 @@ var last_notice := ""
 var notice_until := 0
 var export_thread: Thread
 var export_busy := false
-var active_export_path := ""
 var export_jpeg := false
 var awaiting_head_pose := false
 var gallery: Node3D
@@ -405,9 +404,6 @@ func _update_labels() -> void:
   desktop_label.text = "GALLERY · Arrows: select   Enter: open   G/Esc: return\nO: import   F5: refresh   M: selected image layout\n" + decoder_summary
 
 func _process(delta: float) -> void:
- if export_busy and export_thread != null and export_thread.is_started() and not export_thread.is_alive():
-  var outcome: Error = export_thread.wait_to_finish()
-  _export_finished(outcome, active_export_path)
  diagnostic_timer += delta
  if diagnostic_timer >= 0.5:
   diagnostic_timer = 0.0
@@ -574,8 +570,7 @@ func _export_view(half_sbs: bool) -> void:
   suffix += 1
  export_thread = Thread.new()
  export_busy = true
- active_export_path = path
- result = export_thread.start(Exporter.export_sbs.bind(image, bool(current_entry.sbs), state.to_dictionary(), half_sbs, path))
+ result = export_thread.start(Exporter.export_async.bind(image, bool(current_entry.sbs), state.to_dictionary(), half_sbs, path, _export_finished))
  if result != OK:
   export_busy = false
   _notice("Could not start export: " + error_string(result))

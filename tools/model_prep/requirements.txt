@@ -1,0 +1,15 @@
+numpy==1.26.4
+onnx==1.17.0
+onnxruntime==1.22.0
+Pillow==11.1.0
+safetensors==0.5.3
+huggingface-hub==0.29.3
+omegaconf==2.3.0
+einops==0.8.1
+addict==2.4.0
+scipy==1.15.2
+opencv-python==4.10.0.84
+trimesh==4.6.4
+e3nn==0.5.6
+jaxtyping==0.3.1
+beartype==0.20.2
