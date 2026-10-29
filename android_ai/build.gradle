@@ -1,0 +1,31 @@
+plugins { id 'com.android.library' version '8.6.1' }
+
+// Build independently of the user's working app Gradle project.
+// Supply the matching 4.6.3 Android template AAR, never package a second Godot engine.
+def godotArchive = providers.gradleProperty('godotAar').orNull
+if (godotArchive == null || !file(godotArchive).isFile()) {
+    throw new GradleException('Pass -PgodotAar=<absolute path to your Godot 4.6.3 godot-lib AAR>')
+}
+android {
+    namespace 'org.questphoto.depth'
+    compileSdk 35
+    defaultConfig { minSdk 26; consumerProguardFiles 'consumer-rules.pro' }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+configurations { runtimeDistribution }
+dependencies {
+    compileOnly files(layout.buildDirectory.file('godot/classes.jar'))
+    compileOnly 'com.microsoft.onnxruntime:onnxruntime-android:1.22.0'
+    runtimeDistribution 'com.microsoft.onnxruntime:onnxruntime-android:1.22.0'
+}
+tasks.register('extractGodot', Copy) {
+    from zipTree(file(godotArchive)); include 'classes.jar'; into layout.buildDirectory.dir('godot')
+}
+tasks.withType(JavaCompile).configureEach { dependsOn 'extractGodot' }
+tasks.register('installPlugin', Copy) {
+    dependsOn 'assembleRelease'
+    from(layout.buildDirectory.file('outputs/aar/QuestDepth-release.aar')) { rename { 'QuestDepth.aar' } }
+    from('QuestDepth.gdap')
+    from(configurations.runtimeDistribution)
+    into file('../android/plugins')
+}

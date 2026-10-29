@@ -1,0 +1,2 @@
+-keep class org.questphoto.depth.QuestDepth { *; }
+-keep class ai.onnxruntime.** { *; }

@@ -1,0 +1,32 @@
+{
+  "v2_small": {
+    "name": "V2 Small",
+    "repository": "depth-anything/Depth-Anything-V2-Small",
+    "license": "Apache-2.0",
+    "revision": null,
+    "onnx_sha256": null,
+    "installed": false,
+    "validation": "No checkpoint downloaded or inference executed in this environment",
+    "depth_convention": "relative_inverse_depth"
+  },
+  "v3_small": {
+    "name": "V3 Small",
+    "repository": "depth-anything/DA3-SMALL",
+    "license": "Apache-2.0",
+    "revision": null,
+    "onnx_sha256": null,
+    "installed": false,
+    "validation": "No checkpoint downloaded or inference executed in this environment",
+    "depth_convention": "relative_depth"
+  },
+  "v3_base": {
+    "name": "V3 Base",
+    "repository": "depth-anything/DA3-BASE",
+    "license": "Apache-2.0",
+    "revision": null,
+    "onnx_sha256": null,
+    "installed": false,
+    "validation": "No checkpoint downloaded or inference executed in this environment",
+    "depth_convention": "relative_depth"
+  }
+}
