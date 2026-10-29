@@ -1,3 +1,5 @@
+> **Current preparation tool: revision 3.** [Replacement instructions and full-model verification](docs/MODEL_PREP_REVISION3.md). Apply to your existing preparation folder; no reinstall.
+
 > **Model preparation update 2:** [Replacement instructions](docs/MODEL_PREP_REVISION2.md). Reuses your existing environment; no reinstall. Full checkpoint validation is still required.
 
 > **Windows local-model preparation (development revision 1):** Start with [these instructions](docs/WINDOWS_MODEL_PREPARATION.md). Double-click `Prepare-Models.cmd` in a separate checkout. No AI model has been validated here; this is not a completed 0.3.0 release. Keep your working 0.2.0 installation.
