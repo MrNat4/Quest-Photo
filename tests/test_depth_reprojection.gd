@@ -54,6 +54,11 @@ func run_tests() -> void:
  var high: Image = Reprojection.reconstruct(source, depth, 0.023, 0.5, true)
  check(high != null and high.get_data() != Reprojection.reconstruct(source,depth,0.023).get_data(), "HQ actually uses subpixel splatting")
  check(source.get_data() == original_bytes and depth.get_data() == original_depth, "Source photo and original AI depth bytes unchanged")
+ var tiny_depth: Image = depth.duplicate()
+ for y in tiny_depth.get_height():
+  for x in tiny_depth.get_width():
+   tiny_depth.set_pixel(x,y,Color(depth.get_pixel(x,y).r * 0.00000001,0,0))
+ check(Reprojection.reconstruct(source,tiny_depth,0.04).get_data() == stereo.get_data(), "Normalization is invariant to small arbitrary AI depth units")
  var hole_depth := PackedFloat32Array([0.2, -1, -1, 0.9])
  var colors := PackedFloat32Array([0,0,255,0,0,0,0,0,0,255,0,0])
  Reprojection._fill_background_holes(colors, hole_depth, PackedFloat32Array([1,0,0,1]),4)

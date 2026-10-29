@@ -38,6 +38,8 @@ static func reconstruct(source: Image, depth: Image, strength: float = 0.02,
  var samples := PackedFloat32Array()
  var stride := maxi(1, raw.size() / 65536)
  for i in raw.size():
+  if i % 65536 == 0 and cancelled.is_valid() and cancelled.call():
+   return null
   if not is_finite(raw[i]):
    return null
   if i % stride == 0:
@@ -49,7 +51,7 @@ static func reconstruct(source: Image, depth: Image, strength: float = 0.02,
  var values := depth_copy.get_data().to_float32_array()
  var span := high - low
  for i in values.size():
-  values[i] = clampf((values[i] - low) / span, 0.0, 1.0) if span > 0.000001 else 0.5
+  values[i] = clampf((values[i] - low) / span, 0.0, 1.0) if span > 0.0 else 0.5
  var input := picture.get_data()
  var output := PackedByteArray()
  output.resize(width * height * 6)
