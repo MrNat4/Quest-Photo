@@ -78,3 +78,22 @@ def self_test():
    assert actual.shape==(1,(h//14)*(w//14)+1,4)
    results.append({'height':h,'width':w,'max_abs_error':float(np.max(np.abs(actual-expected)))})
  return results
+
+def install_depth_head(head):
+ """Remove only the two Python int casts that freeze final output H/W.
+
+ Use the pinned upstream implementation verbatim otherwise. Fail closed if its
+ source changes, rather than substituting a partial or approximate depth head.
+ """
+ import inspect
+ import textwrap
+ original=head.forward
+ source=textwrap.dedent(inspect.getsource(type(head).forward))
+ old='(int(patch_h * 14), int(patch_w * 14))'
+ if source.count(old)!=1:
+  raise ValueError('Unexpected V2 DPTHead implementation; refusing an unverified resize patch')
+ source=source.replace(old,'(patch_h * 14, patch_w * 14)')
+ namespace={}
+ exec(compile(source,'<quest-v2-dynamic-depth-head>','exec'), original.__func__.__globals__,namespace)
+ head.forward=types.MethodType(namespace['forward'],head)
+ return original

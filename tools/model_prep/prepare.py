@@ -115,22 +115,25 @@ def prepare(kind, weights, config, photo, near, far):
  image = ImageOps.exif_transpose(Image.open(photo)).convert('RGB')
  second = Image.open(ROOT/'assets/sample_photo.jpg').convert('RGB')
  if sha(photo) == sha(ROOT/'assets/sample_photo.jpg'): raise ValueError('Choose your own different photo for the scene comparison.')
- report = {'model':kind,'checkpoint_sha256':original_hash,'config_sha256':config_hash,'source_revision':SOURCES['v2' if kind=='v2_small' else 'v3'][1], 'torch':torch.__version__, 'onnxruntime':ort.__version__, 'tool_revision':2,'position_resize_tests':position_tests,'tests':[],'device':'Windows/desktop CPU; not Android validation'}
+ report = {'model':kind,'checkpoint_sha256':original_hash,'config_sha256':config_hash,'source_revision':SOURCES['v2' if kind=='v2_small' else 'v3'][1], 'torch':torch.__version__, 'onnxruntime':ort.__version__, 'tool_revision':3,'position_resize_tests':position_tests,'tests':[],'device':'Windows/desktop CPU; not Android validation'}
  output = ROOT/'models'; output.mkdir(exist_ok=True)
  with tempfile.TemporaryDirectory(dir=CACHE) as tmp:
   graph = Path(tmp)/'model.onnx'
   example = tensor(image, dimensions(*image.size,364))
   print('Exporting',kind,'(may take minutes)…',flush=True)
   original_position=None
+  original_head=None
   if kind=='v2_small':
-   from v2_dynamic import install
+   from v2_dynamic import install, install_depth_head
    original_position=install(model.pretrained)
+   original_head=install_depth_head(model.depth_head)
   with torch.no_grad():
    torch.onnx.export(model,example,str(graph),input_names=['image'],output_names=['depth'],opset_version=17,
     dynamo=False,do_constant_folding=True,dynamic_axes={'image':{2:'height',3:'width'},'depth':{1:'height',2:'width'}})
   # Compare against ORIGINAL upstream PyTorch inference, not the export adapter.
   if original_position is not None:
    model.pretrained.interpolate_pos_encoding=original_position
+   model.depth_head.forward=original_head
   graph_model = onnx.load(str(graph)); onnx.checker.check_model(graph_model)
   if any(t.data_location == onnx.TensorProto.EXTERNAL for t in graph_model.graph.initializer):
    raise ValueError('External tensor data not supported by packaged Android contract')
@@ -142,7 +145,7 @@ def prepare(kind, weights, config, photo, near, far):
   scenes=[]
   # Both presets, both orientations, and a second actual scene. Dynamic tracing must generalize.
   cases=[(image,dimensions(*image.size,s),'user',s) for s in (364,518)]
-  cases += [(image,(252,364),'portrait',364),(image,(518,350),'landscape',518),(image,(518,518),'square_native_grid',518),(second,dimensions(*second.size,364),'second',364)]
+  cases += [(image,(252,364),'portrait',364),(image,(518,350),'landscape',518),(image,(518,518),'square_native_grid',518),(image,(238,364),'exact_balanced_regression',364),(image,(518,350),'exact_high_regression',518),(image,(350,518),'high_portrait',518),(second,dimensions(*second.size,364),'second',364)]
   with torch.no_grad():
    for picture,size,label,side in cases:
     x=tensor(picture,size); start=time.perf_counter(); reference=model(x).cpu().numpy()
@@ -206,7 +209,9 @@ def guided():
 
 if __name__=='__main__':
  CACHE.mkdir(exist_ok=True)
- try: guided()
+ try:
+  print('Quest Photo model preparation — revision 3 (dynamic position AND final depth upsampling)',flush=True)
+  guided()
  except Exception:
   text=traceback.format_exc(); (CACHE/'last-error.txt').write_text(text); print(text,file=sys.stderr)
   print('FAILED. No claim of a usable model. Send .model-prep/last-error.txt and console log, not your weights.',file=sys.stderr); sys.exit(1)

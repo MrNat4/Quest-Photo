@@ -1,3 +1,5 @@
+> **Current preparation tool: revision 3.** [Replacement instructions and full-model verification](MODEL_PREP_REVISION3.md). Apply to your existing preparation folder; no reinstall.
+
 > Existing users: apply [revision 2](MODEL_PREP_REVISION2.md) in the same preparation folder. It reuses the installed environment and fixes V2 dynamic positional resizing and PowerShell warning handling.
 
 # Local Windows model preparation — development tool revision 1
