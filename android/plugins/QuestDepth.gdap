@@ -1,0 +1,7 @@
+[config]
+name="QuestDepth"
+binary_type="local"
+binary="QuestDepth.aar"
+
+[dependencies]
+local=["onnxruntime-android-1.22.0.aar"]

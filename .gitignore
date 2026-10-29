@@ -9,3 +9,9 @@ __pycache__/
 .model-prep/
 models/*.onnx.bin
 models/validation/
+
+android/plugins/*.aar
+android/plugins/components.json
+android_ai/.gradle/
+.apk-builder-paths.json
+last-apk-build-error.txt

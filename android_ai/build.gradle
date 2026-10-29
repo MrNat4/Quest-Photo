@@ -12,9 +12,14 @@ android {
     defaultConfig { minSdk 26; consumerProguardFiles 'consumer-rules.pro' }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
+android { testOptions { unitTests.includeAndroidResources = true } }
 configurations { runtimeDistribution }
 dependencies {
-    compileOnly files(layout.buildDirectory.file('godot/classes.jar'))
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'org.godotengine:godot:4.6.3.stable'
+    testImplementation 'com.microsoft.onnxruntime:onnxruntime:1.22.0'
+    compileOnly files(layout.buildDirectory.file('godot/classes.jar')).builtBy('extractGodot')
     compileOnly 'com.microsoft.onnxruntime:onnxruntime-android:1.22.0'
     runtimeDistribution 'com.microsoft.onnxruntime:onnxruntime-android:1.22.0'
 }
@@ -29,3 +34,11 @@ tasks.register('installPlugin', Copy) {
     from(configurations.runtimeDistribution)
     into file('../android/plugins')
 }
+
+ tasks.withType(Test).configureEach {
+    systemProperty "robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2"
+    ["https.proxyHost", "https.proxyPort", "http.proxyHost", "http.proxyPort", "javax.net.ssl.trustStore"].each { key ->
+        if (System.getProperty(key)) systemProperty key, System.getProperty(key)
+    }
+    maxHeapSize = "2g"
+ }
