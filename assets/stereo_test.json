@@ -1,0 +1,54 @@
+{
+  "format": "full-SBS",
+  "eye_size": [
+    1024,
+    768
+  ],
+  "order": [
+    "LEFT",
+    "RIGHT"
+  ],
+  "disparity_convention": "x_left - x_right; positive = nearer than screen",
+  "targets": [
+    {
+      "name": "NEAR",
+      "center": [
+        256,
+        384
+      ],
+      "disparity_px": 24,
+      "color": [
+        61,
+        224,
+        168
+      ]
+    },
+    {
+      "name": "SCREEN",
+      "center": [
+        512,
+        384
+      ],
+      "disparity_px": 0,
+      "color": [
+        245,
+        200,
+        72
+      ]
+    },
+    {
+      "name": "FAR",
+      "center": [
+        768,
+        384
+      ],
+      "disparity_px": -16,
+      "color": [
+        92,
+        167,
+        255
+      ]
+    }
+  ],
+  "license": "CC0-1.0 (original project calibration artwork)"
+}
