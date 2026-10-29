@@ -1,23 +1,23 @@
 $ErrorActionPreference = 'Stop'
 $project = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 Set-Location $project
+$result = 1
 try {
-    & py -3.11 -c "import sys; assert sys.version_info[:2] == (3,11)"
-    if ($LASTEXITCODE -ne 0) { throw 'Install 64-bit Python 3.11 from python.org with the Python launcher and tkinter, then rerun.' }
-    $venv = Join-Path $project '.model-prep\venv'
-    if (!(Test-Path "$venv\Scripts\python.exe")) {
-        & py -3.11 -m venv $venv
-        if ($LASTEXITCODE -ne 0) { throw 'Could not create isolated Python environment.' }
+    $python = Join-Path $project '.model-prep\venv\Scripts\python.exe'
+    if (!(Test-Path $python)) {
+        throw 'Existing preparation environment not found. Extract this update into the SAME preparation folder used previously. No reinstall is needed.'
     }
-    $python = "$venv\Scripts\python.exe"
-    & $python -m pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cpu
-    if ($LASTEXITCODE -ne 0) { throw 'CPU PyTorch installation failed.' }
-    & $python -m pip install -r "$PSScriptRoot\requirements.txt"
-    if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
     $env:HF_HUB_OFFLINE = '1'
     $env:XFORMERS_DISABLED = '1'
-    & $python "$PSScriptRoot\prepare.py" 2>&1 | Tee-Object -FilePath "$project\.model-prep\last-run.log"
-    if ($LASTEXITCODE -ne 0) { throw 'Model preparation failed. See .model-prep\last-error.txt and last-run.log.' }
-    Write-Host 'Model passed desktop validation. Run this launcher again for each remaining model.'
+    $env:PYTHONIOENCODING = 'utf-8'
+    Write-Host 'Using existing Python environment. No pip installs or upgrades.'
+    Write-Host 'xFormers disabled/not available warnings are expected for CPU inference.'
+    # The Python wrapper merges stderr BEFORE PowerShell sees it. Do not use 2>&1 here:
+    # Windows PowerShell 5.1 can turn native stderr warnings into terminating errors.
+    & $python "$PSScriptRoot\run_logged.py"
+    $result = $LASTEXITCODE
+    if ($result -ne 0) { throw 'Preparation failed. Full details are in .model-prep\last-run.log and last-error.txt.' }
+    Write-Host 'PASS: model validated and packaged. Android/Quest testing is still required.'
 } catch { Write-Host "ERROR: $_" -ForegroundColor Red }
 Read-Host 'Press Enter to close'
+exit $result

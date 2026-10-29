@@ -1,6 +1,8 @@
 """Local checkpoint export. Model files never leave this computer."""
 from pathlib import Path
 import os, sys, json, hashlib, tempfile, urllib.request, zipfile, shutil, time, traceback
+# Set before importing any official architecture, including direct script invocation.
+os.environ['XFORMERS_DISABLED']='1'
 ROOT = Path(__file__).resolve().parents[2]
 CACHE = ROOT / '.model-prep'
 SOURCES = {
@@ -104,19 +106,31 @@ def prepare(kind, weights, config, photo, near, far):
  os.environ['HF_HUB_OFFLINE']='1'; os.environ['XFORMERS_DISABLED']='1'
  weights = Path(weights); original_hash = sha(weights)
  config_hash = sha(config) if config else None
+ position_tests=[]
+ if kind=='v2_small':
+  from v2_dynamic import self_test
+  print('Checking dynamic positional Resize at seven sizes before loading weights…',flush=True)
+  position_tests=self_test()
  model, src = load_model(kind, weights, config)
  image = ImageOps.exif_transpose(Image.open(photo)).convert('RGB')
  second = Image.open(ROOT/'assets/sample_photo.jpg').convert('RGB')
  if sha(photo) == sha(ROOT/'assets/sample_photo.jpg'): raise ValueError('Choose your own different photo for the scene comparison.')
- report = {'model':kind,'checkpoint_sha256':original_hash,'config_sha256':config_hash,'source_revision':SOURCES['v2' if kind=='v2_small' else 'v3'][1], 'torch':torch.__version__, 'onnxruntime':ort.__version__, 'tests':[],'device':'Windows/desktop CPU; not Android validation'}
+ report = {'model':kind,'checkpoint_sha256':original_hash,'config_sha256':config_hash,'source_revision':SOURCES['v2' if kind=='v2_small' else 'v3'][1], 'torch':torch.__version__, 'onnxruntime':ort.__version__, 'tool_revision':2,'position_resize_tests':position_tests,'tests':[],'device':'Windows/desktop CPU; not Android validation'}
  output = ROOT/'models'; output.mkdir(exist_ok=True)
  with tempfile.TemporaryDirectory(dir=CACHE) as tmp:
   graph = Path(tmp)/'model.onnx'
   example = tensor(image, dimensions(*image.size,364))
   print('Exporting',kind,'(may take minutes)…',flush=True)
+  original_position=None
+  if kind=='v2_small':
+   from v2_dynamic import install
+   original_position=install(model.pretrained)
   with torch.no_grad():
    torch.onnx.export(model,example,str(graph),input_names=['image'],output_names=['depth'],opset_version=17,
     dynamo=False,do_constant_folding=True,dynamic_axes={'image':{2:'height',3:'width'},'depth':{1:'height',2:'width'}})
+  # Compare against ORIGINAL upstream PyTorch inference, not the export adapter.
+  if original_position is not None:
+   model.pretrained.interpolate_pos_encoding=original_position
   graph_model = onnx.load(str(graph)); onnx.checker.check_model(graph_model)
   if any(t.data_location == onnx.TensorProto.EXTERNAL for t in graph_model.graph.initializer):
    raise ValueError('External tensor data not supported by packaged Android contract')
@@ -128,7 +142,7 @@ def prepare(kind, weights, config, photo, near, far):
   scenes=[]
   # Both presets, both orientations, and a second actual scene. Dynamic tracing must generalize.
   cases=[(image,dimensions(*image.size,s),'user',s) for s in (364,518)]
-  cases += [(image,(252,364),'portrait',364),(image,(518,350),'landscape',518),(second,dimensions(*second.size,364),'second',364)]
+  cases += [(image,(252,364),'portrait',364),(image,(518,350),'landscape',518),(image,(518,518),'square_native_grid',518),(second,dimensions(*second.size,364),'second',364)]
   with torch.no_grad():
    for picture,size,label,side in cases:
     x=tensor(picture,size); start=time.perf_counter(); reference=model(x).cpu().numpy()
