@@ -28,6 +28,7 @@ public final class QuestDepth extends GodotPlugin {
     private OrtEnvironment environment;
     private OrtSession session;
     private String loadedModel = "";
+    private int sessionsOpened, sessionsClosed;
     private OrtSession.RunOptions runOptions;
 
     public QuestDepth(Godot godot) { super(godot); }
@@ -82,6 +83,7 @@ public final class QuestDepth extends GodotPlugin {
         if (session != null) {
             try { session.close(); } catch (OrtException ignored) { }
             session = null;
+            sessionsClosed++;
         }
         loadedModel = "";
     }
@@ -116,6 +118,7 @@ public final class QuestDepth extends GodotPlugin {
                     options.setMemoryPatternOptimization(false);
                     options.setCPUArenaAllocator(false);
                     session = environment.createSession(model.getPath(), options);
+                    sessionsOpened++;
                     if (session.getNumInputs() != 1 || !session.getInputNames().contains("image")
                             || !session.getOutputNames().contains("depth")) {
                         closeSession();
@@ -215,6 +218,8 @@ public final class QuestDepth extends GodotPlugin {
             data.put("state", state); data.put("message", message); data.put("error", error);
             data.put("inference_ms", inferenceMs); data.put("total_ms", totalMs);
             data.put("output_path", output); data.put("width", width); data.put("height", height);
+            data.put("sessions_opened", sessionsOpened); data.put("sessions_closed", sessionsClosed);
+            data.put("loaded_model", loadedModel);
             data.put("inverse_depth", inverseDepth); data.put("runtime", "ONNX Runtime 1.22.0 CPU");
             data.put("java_heap_bytes", Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
             data.put("native_heap_bytes", Debug.getNativeHeapAllocatedSize());

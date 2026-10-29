@@ -9,7 +9,12 @@ static func source_hash(path: String) -> String:
  return FileAccess.get_sha256(raw) if FileAccess.file_exists(raw) else ""
 
 static func key_for(hash: String, model: String, quality: String) -> String:
- return (hash + ":" + model + ":" + quality + ":" + str(SCHEMA)).sha256_text()
+ var revision := ""
+ if FileAccess.file_exists("res://models/catalog.json"):
+  var catalog: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://models/catalog.json"))
+  if catalog is Dictionary and catalog.get(model) is Dictionary:
+   revision = str(catalog[model].get("onnx_sha256", "")) if catalog[model].get("onnx_sha256") != null else ""
+ return (hash + ":" + model + ":" + quality + ":" + str(SCHEMA) + (":" + revision if not revision.is_empty() else "")).sha256_text()
 
 static func load_record(key: String) -> Dictionary:
  if not valid_key(key):
