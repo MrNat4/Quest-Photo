@@ -21,7 +21,7 @@ func check(condition: bool, message: String) -> void:
   push_error("FAIL: " + message)
 
 func render(source: Image, sbs: bool, view: Dictionary, half := false, filename := "output.png") -> Image:
- var path := test_dir.path_join(filename)
+ var path := test_dir.path_join(str(checks) + "_" + filename)
  var result: Error = Exporter.export_sbs(source, sbs, view, half, path)
  check(result == OK, "Export succeeds: " + filename)
  return Image.load_from_file(path) if result == OK else Image.new()

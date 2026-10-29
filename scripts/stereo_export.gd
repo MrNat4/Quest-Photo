@@ -11,6 +11,10 @@ const MAX_INPUT_PIXELS := 32 * 1024 * 1024
 
 static func export_sbs(image: Image, is_sbs: bool, view: Dictionary,
   half_sbs: bool, output_path: String) -> Error:
+ # Never overwrite an original photograph or a previous export. The caller
+ # chooses a unique name; this guard also protects direct use of this API.
+ if FileAccess.file_exists(output_path) or DirAccess.dir_exists_absolute(output_path):
+  return ERR_ALREADY_EXISTS
  if image == null or image.is_empty():
   return ERR_INVALID_PARAMETER
  var source_width := image.get_width()
@@ -78,6 +82,8 @@ static func export_sbs(image: Image, is_sbs: bool, view: Dictionary,
   cropped.resize(destination_eye_width, height, Image.INTERPOLATE_BILINEAR)
   output.blit_rect(cropped, Rect2i(0, 0, destination_eye_width, height),
    Vector2i(display_eye * destination_eye_width, 0))
+ if FileAccess.file_exists(output_path):
+  return ERR_ALREADY_EXISTS
  if extension == "png":
   return output.save_png(output_path)
  return output.save_jpg(output_path, 0.95)
