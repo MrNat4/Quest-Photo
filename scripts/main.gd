@@ -9,6 +9,13 @@ const Importer = preload("res://scripts/photo_importer.gd")
 const Loader = preload("res://scripts/photo_loader.gd")
 const Layout = preload("res://scripts/stereo_layout.gd")
 const RuntimeProbe = preload("res://scripts/runtime_image_probe.gd")
+const Conversion = preload("res://scripts/ai/depth_conversion.gd")
+const ConversionPanel = preload("res://scripts/ai/conversion_panel.gd")
+var conversion: Node
+var conversion_panel: Node3D
+var conversion_open := false
+var original_entry: Dictionary = {}
+var displayed_conversion: Dictionary = {}
 var state = State.new()
 var library = Library.new()
 var current_index := 0
@@ -36,6 +43,7 @@ var last_notice := ""
 var notice_until := 0
 var export_thread: Thread
 var export_busy := false
+var active_export_path := ""
 var export_jpeg := false
 var awaiting_head_pose := false
 var gallery: Node3D
@@ -58,6 +66,7 @@ func _ready() -> void:
  show_photo(0)
  recenter()
  _build_library_ui()
+ _build_conversion_ui()
  _run_decoder_probe()
  print("Quest Photo ready; XR active: ", xr_active, "; library items: ", library.entries.size())
 
@@ -86,7 +95,7 @@ func _build_scene() -> void:
  status = _label(32, 0.0013)
  anchor.add_child(status)
  help = _label(24, 0.0012)
- help.text = "Left grip + Y: GALLERY / IMPORT   A: next   Left grip + A: previous\nX: 2D / stereo   Left grip + X: image layout   B: reset   Y: help\nRight stick: size / rotate   Left stick: pan\nLeft trigger + right stick: zoom / convergence   Right grip: grab\nLeft stick click: recenter   Right stick click: calibration\nRight/left trigger + right stick click: full/half SBS export\nBoth triggers + right stick click: PNG/JPG; + A: swap eyes"
+ help.text = "Quest Photo — Version " + str(ProjectSettings.get_setting("application/config/version", "unknown")) + "\nLeft grip + B: AI conversion\nLeft grip + Y: GALLERY / IMPORT   A: next   Left grip + A: previous\nX: 2D / stereo   Left grip + X: image layout   B: reset   Y: help\nRight stick: size / rotate   Left stick: pan\nLeft trigger + right stick: zoom / convergence   Right grip: grab\nLeft stick click: recenter   Right stick click: calibration\nRight/left trigger + right stick click: full/half SBS export\nBoth triggers + right stick click: PNG/JPG; + A: swap eyes"
  anchor.add_child(help)
  input_diagnostic_label = _label(20, 0.0012)
  help.add_child(input_diagnostic_label)
@@ -143,6 +152,8 @@ func _set_gallery_open(value: bool) -> void:
  if gallery == null:
   return
  dragging = false
+ if value:
+  _set_conversion_open(false)
  gallery_open = value
  _record_diagnostic("gallery_open" if value else "gallery_closed")
  gallery_stick_latched = true
@@ -309,6 +320,8 @@ func _display_photo(index: int, entry: Dictionary, texture: Texture2D) -> void:
  _save_view()
  current_index = index
  current_entry = entry
+ original_entry = entry.duplicate(true)
+ displayed_conversion = {}
  state = State.new()
  state.load_from(library.settings_path(str(entry.path)))
  material.set_shader_parameter("photograph", texture)
@@ -378,16 +391,23 @@ func _update_labels() -> void:
  var title := str(current_entry.get("title", "Quest Photo"))
  var mode := "STEREO" if bool(current_entry.get("sbs", false)) and state.stereo_enabled else "2D"
  if not bool(current_entry.get("sbs", false)):
-  mode += " · AI conversion pending"
+  mode += " · Left grip + B: AI conversion"
  status.text = "%s\n%s  |  Zoom %.2fx  |  Size %.2fx" % [title, mode, state.zoom, state.panel_scale]
+ if not displayed_conversion.is_empty():
+  status.text += "\nDisplayed: %s · %s · %.1f s" % [displayed_conversion.get("model_name", ""), displayed_conversion.get("quality", ""), float(displayed_conversion.get("inference_ms", 0)) / 1000.0]
  if Time.get_ticks_msec() < notice_until:
   status.text += "\n" + last_notice
  help.visible = help_visible
  desktop_label.text = "QUEST PHOTO · desktop preview (%s eye)\n%s\n\nG: gallery   O: import   N/P: next/previous   M: image layout\nT: calibration   Space: 2D/stereo   W/S: size   Q/E: rotate\n+/-: zoom   Arrows: pan   I/J/K/L: position   U/D: distance\nR: reset   [/]: convergence   V: preview eye   F: swap eyes   H: help\nF5: refresh   F6/F7: full/half export   F8: PNG/JPG   Esc: quit\n\n%s" % ["left" if preview_eye == 0 else "right", status.text, decoder_summary]
- if gallery_open:
+ if conversion_open:
+  desktop_label.text = "AI CONVERSION · C/Esc: close · Arrows: select · Enter: activate\n" + conversion_panel.summary + "\n" + conversion_panel.rows.text
+ elif gallery_open:
   desktop_label.text = "GALLERY · Arrows: select   Enter: open   G/Esc: return\nO: import   F5: refresh   M: selected image layout\n" + decoder_summary
 
 func _process(delta: float) -> void:
+ if export_busy and export_thread != null and export_thread.is_started() and not export_thread.is_alive():
+  var outcome: Error = export_thread.wait_to_finish()
+  _export_finished(outcome, active_export_path)
  diagnostic_timer += delta
  if diagnostic_timer >= 0.5:
   diagnostic_timer = 0.0
@@ -417,17 +437,18 @@ func _process_controllers(delta: float) -> void:
   return
  var l := _axis(left.get_vector2("thumbstick")) if left.get_has_tracking_data() else Vector2.ZERO
  var r := _axis(right.get_vector2("thumbstick")) if right.get_has_tracking_data() else Vector2.ZERO
- if gallery_open:
+ if gallery_open or conversion_open:
+  var menu: Node3D = conversion_panel if conversion_open else gallery
   dragging = false
   var axis := r if r.length() > l.length() else l
   if axis.length() < 0.25:
    gallery_stick_latched = false
   elif axis.length() > 0.65 and not gallery_stick_latched:
    gallery_stick_latched = true
-   gallery.move_focus(Vector2(axis.x, -axis.y))
+   menu.move_focus(Vector2(axis.x, -axis.y))
   var pressed := _trigger_held(right)
   if pressed and not gallery_trigger_latched:
-   gallery.activate()
+   menu.activate()
   gallery_trigger_latched = pressed
   return
  if l != Vector2.ZERO or r != Vector2.ZERO:
@@ -460,6 +481,8 @@ func _left_button(action: StringName) -> void:
  if action == "secondary" and _grip_held(left):
   _set_gallery_open(not gallery_open)
   return
+ if conversion_open:
+  return
  if gallery_open:
   if action == "thumbstick_click":
    recenter()
@@ -484,11 +507,20 @@ func _right_button(action: StringName) -> void:
   if action == "secondary":
    importer.cancel_import()
   return
+ if conversion_open:
+  if action == "primary":
+   conversion_panel.activate()
+  elif action == "secondary":
+   _set_conversion_open(false)
+  return
  if gallery_open:
   if action == "primary":
    gallery.activate()
   elif action == "secondary":
    _set_gallery_open(false)
+  return
+ if action == "secondary" and _grip_held(left):
+  _set_conversion_open(true)
   return
  match action:
   "primary":
@@ -536,18 +568,19 @@ func _export_view(half_sbs: bool) -> void:
   return
  var filename := "%s_%d_%d.%s.%s" % [str(current_entry.path).get_file().get_basename(), int(Time.get_unix_time_from_system()), Time.get_ticks_msec(), "half-sbs" if half_sbs else "sbs", "jpg" if export_jpeg else "png"]
  var path := folder.path_join(filename)
+ var suffix := 1
+ while FileAccess.file_exists(path):
+  path = folder.path_join(filename.get_basename() + "_%d." % suffix + filename.get_extension())
+  suffix += 1
  export_thread = Thread.new()
  export_busy = true
- result = export_thread.start(_write_export.bind(image, bool(current_entry.sbs), state.to_dictionary(), half_sbs, path))
+ active_export_path = path
+ result = export_thread.start(Exporter.export_sbs.bind(image, bool(current_entry.sbs), state.to_dictionary(), half_sbs, path))
  if result != OK:
   export_busy = false
   _notice("Could not start export: " + error_string(result))
  else:
   _notice("Exporting " + ("half SBS…" if half_sbs else "full SBS…"))
-
-func _write_export(image: Image, is_sbs: bool, view: Dictionary, half_sbs: bool, path: String) -> void:
- var result: Error = Exporter.export_sbs(image, is_sbs, view, half_sbs, path)
- _export_finished.call_deferred(result, path)
 
 func _export_finished(result: Error, path: String) -> void:
  if export_thread != null and export_thread.is_started():
@@ -595,6 +628,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
  if importer != null and importer.is_busy():
   if event.keycode == KEY_ESCAPE:
    importer.cancel_import()
+  return
+ if event.keycode == KEY_C:
+  _set_conversion_open(not conversion_open)
+  return
+ if conversion_open:
+  match event.keycode:
+   KEY_UP, KEY_LEFT: conversion_panel.move_focus(Vector2.UP)
+   KEY_DOWN, KEY_RIGHT: conversion_panel.move_focus(Vector2.DOWN)
+   KEY_ENTER, KEY_KP_ENTER: conversion_panel.activate()
+   KEY_ESCAPE: _set_conversion_open(false)
+  _update_labels()
   return
  if event.keycode == KEY_G:
   _set_gallery_open(not gallery_open)
@@ -674,3 +718,109 @@ func _record_diagnostic(event: String, message: String = "") -> void:
  var file := FileAccess.open("user://controller-gallery-diagnostics.json", FileAccess.WRITE)
  if file != null:
   file.store_string(JSON.stringify(diagnostics, "  "))
+
+func _build_conversion_ui() -> void:
+ conversion = Conversion.new()
+ add_child(conversion)
+ conversion.status_changed.connect(_conversion_status)
+ conversion.result_ready.connect(_conversion_ready)
+ conversion_panel = ConversionPanel.new()
+ conversion_panel.visible = false
+ add_child(conversion_panel)
+ conversion_panel.action.connect(_conversion_action)
+ _refresh_conversion_panel()
+
+func _refresh_conversion_panel() -> void:
+ if conversion_panel == null:
+  return
+ var shown := str(displayed_conversion.get("model_name", "Original"))
+ conversion_panel.summary = "Selected: %s · %s\nDisplayed: %s · Depth %.0f%% · Plane %.2f\n%s" % [conversion.model_name(), conversion.quality_name(), shown, conversion.strength * 100, conversion.screen_plane, str(conversion.message).left(100)]
+ conversion_panel.refresh()
+
+func _set_conversion_open(value: bool) -> void:
+ if conversion_panel == null:
+  return
+ if value and gallery_open:
+  _set_gallery_open(false)
+ conversion_open = value
+ conversion_panel.visible = value
+ # Put the menu just below the image so adjustments remain visible.
+ conversion_panel.global_transform = anchor.global_transform
+ conversion_panel.position.y -= 0.95
+ dragging = false
+ gallery_stick_latched = true
+ gallery_trigger_latched = _trigger_held(right)
+ _refresh_conversion_panel()
+ _update_labels()
+
+func _conversion_status(message: String) -> void:
+ _refresh_conversion_panel()
+ _notice(message)
+
+func _conversion_action(command: String) -> void:
+ match command:
+  "model": conversion.select_next_model()
+  "quality":
+   if not conversion.busy:
+    conversion.high_quality = not conversion.high_quality
+  "convert": conversion.start(original_entry)
+  "original": _show_original()
+  "result":
+   if not conversion.busy:
+    _compare_saved_result()
+  "less": _adjust_depth(-0.0025, 0)
+  "more": _adjust_depth(0.0025, 0)
+  "plane_less": _adjust_depth(0, -0.05)
+  "plane_more": _adjust_depth(0, 0.05)
+  "cancel": conversion.cancel()
+  "close": _set_conversion_open(false)
+ _refresh_conversion_panel()
+ _update_labels()
+
+func _compare_saved_result() -> void:
+ var hash := Conversion.Store.source_hash(str(original_entry.get("path", "")))
+ for step in range(1, 4):
+  var index: int = (conversion.selected_model + step) % 3
+  var key := Conversion.Store.key_for(hash, Conversion.MODELS[index], conversion.quality_name())
+  if not Conversion.Store.load_record(key).is_empty():
+   if conversion.backend != null:
+    conversion.backend.release_model()
+   conversion.selected_model = index
+   conversion.start(original_entry)
+   return
+ _notice("No saved result for this photo and quality. Select a model, then Convert.")
+
+func _conversion_ready(image: Image, record: Dictionary) -> void:
+ # A finished background job must never replace another photograph.
+ if str(record.get("source_path", "")) != str(original_entry.get("path", "")):
+  _notice("Conversion saved for the earlier photo.")
+  return
+ current_entry = original_entry.duplicate(true)
+ current_entry["sbs"] = true
+ displayed_conversion = record
+ state.stereo_enabled = true
+ material.set_shader_parameter("photograph", ImageTexture.create_from_image(image))
+ material.set_shader_parameter("is_sbs", true)
+ _apply_view()
+ _refresh_conversion_panel()
+
+func _show_original() -> void:
+ if original_entry.is_empty():
+  return
+ # Preserve placement, zoom, pan and convergence; only replace image content.
+ var image: Image = library.load_image(original_entry)
+ if image == null:
+  _notice(library.error_message)
+  return
+ current_entry = original_entry.duplicate(true)
+ displayed_conversion = {}
+ material.set_shader_parameter("photograph", ImageTexture.create_from_image(image))
+ material.set_shader_parameter("is_sbs", bool(current_entry.sbs))
+ _apply_view()
+ _refresh_conversion_panel()
+
+func _adjust_depth(intensity: float, plane: float) -> void:
+ if displayed_conversion.is_empty():
+  _notice("Show a saved conversion before adjusting its depth.")
+  return
+ conversion.adjust(intensity, plane)
