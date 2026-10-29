@@ -1,3 +1,5 @@
+> **Current model-preparation patch: revision 4.** [V3 compatibility fix and complete-model test results](docs/MODEL_PREP_REVISION4.md). Preserves V2 output and the existing environment.
+
 > **Current preparation tool: revision 3.** [Replacement instructions and full-model verification](docs/MODEL_PREP_REVISION3.md). Apply to your existing preparation folder; no reinstall.
 
 > **Model preparation update 2:** [Replacement instructions](docs/MODEL_PREP_REVISION2.md). Reuses your existing environment; no reinstall. Full checkpoint validation is still required.

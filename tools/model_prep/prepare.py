@@ -1,4 +1,5 @@
 """Local checkpoint export. Model files never leave this computer."""
+from contextlib import nullcontext
 from pathlib import Path
 import os, sys, json, hashlib, tempfile, urllib.request, zipfile, shutil, time, traceback
 # Set before importing any official architecture, including direct script invocation.
@@ -60,20 +61,12 @@ def load_model(kind, weights, config):
   model = DepthAnythingV2(encoder='vits', features=64, out_channels=[48,96,192,384])
   model.load_state_dict(torch.load(weights, map_location='cpu', weights_only=True), strict=True)
  else:
-  from depth_anything_3.cfg import load_config, create_object
   from safetensors.torch import load_file
+  from v3_checkpoint import build_model,load_checked
   if identity(config) != kind: raise ValueError('Checkpoint/config model identity mismatch')
-  name = 'da3-small' if kind == 'v3_small' else 'da3-base'
-  # Match official Hub wrapper state-dict prefix without importing its optional UI/export stack.
-  class Wrapper(torch.nn.Module):
-   def __init__(self):
-    super().__init__()
-    self.model = create_object(load_config(str(src/'src/depth_anything_3/configs'/f'{name}.yaml')))
-   def forward(self, image):
-    result = self.model(image.unsqueeze(1), export_feat_layers=[], infer_gs=False, ref_view_strategy='first')
-    return result['depth'].reshape(image.shape[0], image.shape[2], image.shape[3])
-  model = Wrapper()
-  model.load_state_dict(load_file(str(weights), device='cpu'), strict=True)
+  model=build_model(kind,src)
+  model.checkpoint_report=load_checked(model,load_file(str(weights),device='cpu'))
+  print('Checkpoint compatibility:',model.checkpoint_report,flush=True)
  return model.float().eval(), src
 
 def validate_output(reference, result):
@@ -115,7 +108,7 @@ def prepare(kind, weights, config, photo, near, far):
  image = ImageOps.exif_transpose(Image.open(photo)).convert('RGB')
  second = Image.open(ROOT/'assets/sample_photo.jpg').convert('RGB')
  if sha(photo) == sha(ROOT/'assets/sample_photo.jpg'): raise ValueError('Choose your own different photo for the scene comparison.')
- report = {'model':kind,'checkpoint_sha256':original_hash,'config_sha256':config_hash,'source_revision':SOURCES['v2' if kind=='v2_small' else 'v3'][1], 'torch':torch.__version__, 'onnxruntime':ort.__version__, 'tool_revision':3,'position_resize_tests':position_tests,'tests':[],'device':'Windows/desktop CPU; not Android validation'}
+ report = {'model':kind,'checkpoint_sha256':original_hash,'config_sha256':config_hash,'source_revision':SOURCES['v2' if kind=='v2_small' else 'v3'][1], 'torch':torch.__version__, 'onnxruntime':ort.__version__, 'tool_revision':4,'checkpoint_compatibility':getattr(model,'checkpoint_report',{}),'position_resize_tests':position_tests,'tests':[],'device':'Windows/desktop CPU; not Android validation'}
  output = ROOT/'models'; output.mkdir(exist_ok=True)
  with tempfile.TemporaryDirectory(dir=CACHE) as tmp:
   graph = Path(tmp)/'model.onnx'
@@ -127,7 +120,11 @@ def prepare(kind, weights, config, photo, near, far):
    from v2_dynamic import install, install_depth_head
    original_position=install(model.pretrained)
    original_head=install_depth_head(model.depth_head)
-  with torch.no_grad():
+  export_scope=nullcontext()
+  if kind.startswith("v3_"):
+   from v3_export import export_context
+   export_scope=export_context(model)
+  with torch.no_grad(),export_scope:
    torch.onnx.export(model,example,str(graph),input_names=['image'],output_names=['depth'],opset_version=17,
     dynamo=False,do_constant_folding=True,dynamic_axes={'image':{2:'height',3:'width'},'depth':{1:'height',2:'width'}})
   # Compare against ORIGINAL upstream PyTorch inference, not the export adapter.
@@ -210,7 +207,7 @@ def guided():
 if __name__=='__main__':
  CACHE.mkdir(exist_ok=True)
  try:
-  print('Quest Photo model preparation — revision 3 (dynamic position AND final depth upsampling)',flush=True)
+  print('Quest Photo model preparation — revision 4 (controlled V3 auxiliary alias loading)',flush=True)
   guided()
  except Exception:
   text=traceback.format_exc(); (CACHE/'last-error.txt').write_text(text); print(text,file=sys.stderr)

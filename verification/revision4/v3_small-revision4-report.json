@@ -1,0 +1,72 @@
+{
+  "model": "v3_small",
+  "weights": "generated, not pretrained",
+  "parameter_count": 34299463,
+  "torch": "2.6.0+cpu",
+  "ort": "1.22.0",
+  "cases": [
+    {
+      "normalized_rmse": 1.00161645207686e-06,
+      "correlation": 0.9999999999912371,
+      "size_wh": [
+        364,
+        238
+      ],
+      "max_abs_error": 1.7881393432617188e-07,
+      "ort_seconds": 0.28183577200979926
+    },
+    {
+      "normalized_rmse": 1.0547919275966158e-06,
+      "correlation": 0.9999999999905886,
+      "size_wh": [
+        518,
+        350
+      ],
+      "max_abs_error": 2.384185791015625e-07,
+      "ort_seconds": 0.6054875469999388
+    },
+    {
+      "normalized_rmse": 1.1142203711536532e-06,
+      "correlation": 0.9999999999902119,
+      "size_wh": [
+        350,
+        518
+      ],
+      "max_abs_error": 2.384185791015625e-07,
+      "ort_seconds": 0.6267590500065126
+    },
+    {
+      "normalized_rmse": 1.0553472593336803e-06,
+      "correlation": 0.9999999999912812,
+      "size_wh": [
+        518,
+        518
+      ],
+      "max_abs_error": 2.384185791015625e-07,
+      "ort_seconds": 0.8327110419922974
+    },
+    {
+      "normalized_rmse": 1.166949953940917e-06,
+      "correlation": 0.9999999999888833,
+      "size_wh": [
+        364,
+        364
+      ],
+      "max_abs_error": 2.980232238769531e-07,
+      "ort_seconds": 0.410477304001688
+    }
+  ],
+  "checkpoint": {
+    "allowed_missing_aliases": [
+      "model.head.scratch.output_conv2_aux.1.2.bias",
+      "model.head.scratch.output_conv2_aux.1.2.weight",
+      "model.head.scratch.output_conv2_aux.2.2.bias",
+      "model.head.scratch.output_conv2_aux.2.2.weight",
+      "model.head.scratch.output_conv2_aux.3.2.bias",
+      "model.head.scratch.output_conv2_aux.3.2.weight"
+    ],
+    "unexpected_keys": [],
+    "strategy": "shared canonical tensors restored, then strict=True",
+    "upstream_issue": "https://github.com/ByteDance-Seed/Depth-Anything-3/issues/2"
+  }
+}

@@ -1,0 +1,174 @@
+Running import…
+Running assets…
+test_disparity_geometry_from_actual_pixels (test_assets.StereoAssetTests.test_disparity_geometry_from_actual_pixels) ... ok
+test_eye_order_and_full_sbs_dimensions (test_assets.StereoAssetTests.test_eye_order_and_full_sbs_dimensions) ... ok
+test_grid_is_at_zero_disparity (test_assets.StereoAssetTests.test_grid_is_at_zero_disparity) ... ok
+test_real_photo_is_decodable (test_assets.StereoAssetTests.test_real_photo_is_decodable) ... ok
+test_actual_dynamic_onnx_at_seven_sizes (test_model_prep_revision2.LauncherTests.test_actual_dynamic_onnx_at_seven_sizes) ... /workspace/quest-photo/tools/model_prep/v2_dynamic.py:14: TracerWarning: Converting a tensor to a Python number might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  w,h=int(width.item()),int(height.item())
+ok
+test_adapter_export_graph_has_runtime_scales (test_model_prep_revision2.LauncherTests.test_adapter_export_graph_has_runtime_scales) ... ok
+test_adapter_restores_reference_before_testing (test_model_prep_revision2.LauncherTests.test_adapter_restores_reference_before_testing) ... ok
+test_launcher_keeps_existing_environment (test_model_prep_revision2.LauncherTests.test_launcher_keeps_existing_environment) ... ok
+test_real_failure_exit_and_trace_preserved (test_model_prep_revision2.LauncherTests.test_real_failure_exit_and_trace_preserved) ... Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+RuntimeError: model failure
+/workspace/quest-photo/tests/test_model_prep_revision2.py:17: ResourceWarning: unclosed file <_io.TextIOWrapper name=4 encoding='utf-8'>
+  code=module('run_logged').run([sys.executable,'-c',"raise RuntimeError('model failure')"],path)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_stderr_warning_is_not_failure (test_model_prep_revision2.LauncherTests.test_stderr_warning_is_not_failure) ... xFormers not available
+continued
+/workspace/quest-photo/tests/test_model_prep_revision2.py:12: ResourceWarning: unclosed file <_io.TextIOWrapper name=4 encoding='utf-8'>
+  code=module('run_logged').run([sys.executable,'-c',"import sys; print('xFormers not available',file=sys.stderr); print('continued')"],path)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+ok
+test_android_rounding (test_model_preparation.PreparationTests.test_android_rounding) ... ok
+test_depth_direction (test_model_preparation.PreparationTests.test_depth_direction) ... ok
+test_hash_read_only (test_model_preparation.PreparationTests.test_hash_read_only) ... ok
+test_identity (test_model_preparation.PreparationTests.test_identity) ... ok
+test_output_gate (test_model_preparation.PreparationTests.test_output_gate) ... /workspace/toolchain/ai-test/lib/python3.12/site-packages/numpy/lib/function_base.py:2897: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+/workspace/toolchain/ai-test/lib/python3.12/site-packages/numpy/lib/function_base.py:2898: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[None, :]
+ok
+test_backup_apply_and_idempotence (test_update_project.UpdateTests.test_backup_apply_and_idempotence) ... ok
+test_dry_plan_preserves_local_build_and_signing (test_update_project.UpdateTests.test_dry_plan_preserves_local_build_and_signing) ... ok
+test_enable_plugin_only_when_distributable_is_complete (test_update_project.UpdateTests.test_enable_plugin_only_when_distributable_is_complete) ... ok
+test_missing_target_or_nested_copy_rejected (test_update_project.UpdateTests.test_missing_target_or_nested_copy_rejected) ... ok
+test_symlink_target_rejected (test_update_project.UpdateTests.test_symlink_target_rejected) ... ok
+test_version_code_minimum_and_repeat (test_update_project.UpdateTests.test_version_code_minimum_and_repeat) ... ok
+test_canonical_missing (test_v3_checkpoint.V3CheckpointTests.test_canonical_missing) ... ok
+test_conflicting_alias (test_v3_checkpoint.V3CheckpointTests.test_conflicting_alias) ... ok
+test_essential_missing (test_v3_checkpoint.V3CheckpointTests.test_essential_missing) ... ok
+test_exact_six_and_strict_full (test_v3_checkpoint.V3CheckpointTests.test_exact_six_and_strict_full) ... ok
+test_extra (test_v3_checkpoint.V3CheckpointTests.test_extra) ... ok
+test_not_shared (test_v3_checkpoint.V3CheckpointTests.test_not_shared) ... ok
+test_wrong_shape (test_v3_checkpoint.V3CheckpointTests.test_wrong_shape) ... ok
+
+----------------------------------------------------------------------
+Ran 28 tests in 1.681s
+
+OK
+Running core…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+CORE TESTS: 58 checks, 0 failures
+Running export…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+EXPORT TESTS: 30 checks, 0 failures
+Running formats…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+FORMAT TESTS: 69 checks, 0 failures
+Running layouts…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+LAYOUT TESTS: 50 checks, 0 failures
+Running ai_conversion…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+Runtime image decoders: {"all_ok":true,"engine":"4.6.3-stable (official)","formats":{"bmp":{"error":"","height":24,"ok":true,"width":32},"jpeg":{"error":"","height":24,"ok":true,"width":32},"png":{"error":"","height":24,"ok":true,"width":32},"webp":{"error":"","height":24,"ok":true,"width":32}},"platform":"Linux","xr_active":false}
+Quest Photo ready; XR active: false; library items: 2
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Conversion saved for the earlier photo.","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":366}
+AI CONVERSION INTEGRATION: 30 checks, 0 failures (synthetic depth; NO neural inference claim)
+Running depth_reprojection…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+DEPTH REPROJECTION TESTS: 22 checks, 0 failures
+Running export_protection…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+EXPORT PROTECTION: 12 checks, 0 failures
+Running storage…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+Storage import tests: PASS
+Running gallery…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+GALLERY TESTS: 74 checks, 0 failures. Headless navigation/cache behavior only; VR presentation remains unverified.
+Running viewer…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+Runtime image decoders: {"all_ok":true,"engine":"4.6.3-stable (official)","formats":{"bmp":{"error":"","height":24,"ok":true,"width":32},"jpeg":{"error":"","height":24,"ok":true,"width":32},"png":{"error":"","height":24,"ok":true,"width":32},"webp":{"error":"","height":24,"ok":true,"width":32}},"platform":"Linux","xr_active":false}
+Quest Photo ready; XR active: false; library items: 2
+QuestPhoto diagnostic: {"event":"left:primary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":293}
+QuestPhoto diagnostic: {"event":"left:secondary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":293}
+QuestPhoto diagnostic: {"event":"right:primary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":293}
+QuestPhoto diagnostic: {"event":"right:thumbstick_click","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":295}
+QuestPhoto diagnostic: {"event":"right:secondary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":308}
+QuestPhoto diagnostic: {"event":"left:thumbstick_click","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":309}
+QuestPhoto diagnostic: {"event":"left:primary","focused":false,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":309}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Invalid image or photo exceeds 32 megapixels. Supported: JPEG, PNG, static WebP and BMP.","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":324}
+QuestPhoto diagnostic: {"event":"right:primary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":324}
+QuestPhoto diagnostic: {"event":"right:primary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"message":"","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"time_ms":340}
+QuestPhoto diagnostic: {"event":"right:primary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":false,"trigger":0.800000011920929},"message":"","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"time_ms":340}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"Exporting full SBS…","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"time_ms":360}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"An export is already running.","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"time_ms":360}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"Saved to exports: viewer-async-test.sbs_1793297608_360.sbs.png","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"time_ms":409}
+QuestPhoto diagnostic: {"event":"right:thumbstick_click","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"message":"","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"time_ms":412}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"message":"Exporting half SBS…","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"time_ms":412}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"message":"Saved to exports: viewer-async-test.sbs_1793297608_412.half-sbs.png","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"time_ms":414}
+QuestPhoto diagnostic: {"event":"right:thumbstick_click","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"message":"","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"time_ms":415}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"message":"Export format: JPG","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"time_ms":415}
+QuestPhoto diagnostic: {"event":"right:thumbstick_click","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"time_ms":415}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"Exporting full SBS…","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"time_ms":416}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"Saved to exports: viewer-async-test.sbs_1793297608_416.sbs.jpg","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.800000011920929},"time_ms":417}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"Exporting half SBS…","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"time_ms":418}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"Saved to exports: viewer-async-test.sbs_1793297608_418.half-sbs.jpg","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"time_ms":418}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"Export format: PNG","right":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"time_ms":422}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Exporting full SBS…","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":435}
+Viewer behavioral tests: 97 checks, 0 failures. Dummy renderer + synthetic trackers only; no rendered stereo/headset validation.
+Running grip_gallery…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+Runtime image decoders: {"all_ok":true,"engine":"4.6.3-stable (official)","formats":{"bmp":{"error":"","height":24,"ok":true,"width":32},"jpeg":{"error":"","height":24,"ok":true,"width":32},"png":{"error":"","height":24,"ok":true,"width":32},"webp":{"error":"","height":24,"ok":true,"width":32}},"platform":"Linux","xr_active":false}
+Quest Photo ready; XR active: false; library items: 2
+QuestPhoto diagnostic: {"event":"left:secondary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":0.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":245}
+QuestPhoto diagnostic: {"event":"left:secondary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":1.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":245}
+QuestPhoto diagnostic: {"event":"gallery_open","focused":true,"gallery_open":true,"import_busy":false,"left":{"profile":"","squeeze":1.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":245}
+QuestPhoto diagnostic: {"event":"right:secondary","focused":true,"gallery_open":true,"import_busy":false,"left":{"profile":"","squeeze":1.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":246}
+QuestPhoto diagnostic: {"event":"gallery_closed","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":1.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":246}
+QuestPhoto diagnostic: {"event":"left:primary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":1.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":246}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":1.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"Stereo calibration · Layout: Half SBS","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":379}
+QuestPhoto diagnostic: {"event":"right:primary","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":1.0,"squeeze_present":true,"tracked":true,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":380}
+QuestPhoto diagnostic: {"event":"left:secondary","focused":false,"gallery_open":false,"import_busy":false,"left":{"profile":"","squeeze":1.0,"squeeze_present":true,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":383}
+GRIP/GALLERY TESTS: 22 checks, 0 failures
+Running integration…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+Runtime image decoders: {"all_ok":true,"engine":"4.6.3-stable (official)","formats":{"bmp":{"error":"","height":24,"ok":true,"width":32},"jpeg":{"error":"","height":24,"ok":true,"width":32},"png":{"error":"","height":24,"ok":true,"width":32},"webp":{"error":"","height":24,"ok":true,"width":32}},"platform":"Linux","xr_active":false}
+Quest Photo ready; XR active: false; library items: 2
+QuestPhoto diagnostic: {"event":"gallery_open","focused":true,"gallery_open":true,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":422}
+QuestPhoto diagnostic: {"event":"gallery_closed","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":426}
+QuestPhoto diagnostic: {"event":"gallery_open","focused":true,"gallery_open":true,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":426}
+QuestPhoto diagnostic: {"event":"gallery_closed","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":426}
+QuestPhoto diagnostic: {"event":"gallery_open","focused":true,"gallery_open":true,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":427}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":true,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Importing 4 photograph(s)…","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":427}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":true,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Importing 1/4 · integration.png","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":476}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":true,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Processed 1/4 photograph(s)  25%","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":476}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":true,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Importing 2/4 · integration.webp  25%","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":477}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":true,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Processed 2/4 photograph(s)  50%","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":477}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":true,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Importing 3/4 · integration.bmp  50%","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":477}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":true,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Processed 3/4 photograph(s)  75%","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":477}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":true,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Importing 4/4 · integration.jpg  75%","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":478}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":true,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Processed 4/4 photograph(s)  100%","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":478}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Library refreshed: 6 images.","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":481}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Imported 4 photo(s).","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":482}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":true,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Loading integration.webp…","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":484}
+QuestPhoto diagnostic: {"event":"gallery_closed","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":491}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Loading integration.webp…","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":496}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"integration.webp · Layout: Full SBS","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":496}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Loading integration.bmp…","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":499}
+QuestPhoto diagnostic: {"event":"notice","focused":true,"gallery_open":false,"import_busy":false,"left":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"message":"Loading integration.jpg…","right":{"profile":"unavailable","squeeze":0.0,"squeeze_present":false,"tracked":false,"trigger":0.0},"time_ms":499}
+INTEGRATION TESTS: 15 checks, 0 failures
+Running startup…
+Godot Engine v4.6.3.stable.official.7d41c59c4 - https://godotengine.org
+
+Runtime image decoders: {"all_ok":true,"engine":"4.6.3-stable (official)","formats":{"bmp":{"error":"","height":24,"ok":true,"width":32},"jpeg":{"error":"","height":24,"ok":true,"width":32},"png":{"error":"","height":24,"ok":true,"width":32},"webp":{"error":"","height":24,"ok":true,"width":32}},"platform":"Linux","xr_active":false}
+Quest Photo ready; XR active: false; library items: 6
+Running build-script-syntax…
+
+PASS: headless checks. Graphics, real OpenXR, Android APK and Quest hardware remain unverified.
