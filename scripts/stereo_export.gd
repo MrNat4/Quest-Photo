@@ -87,3 +87,8 @@ static func export_sbs(image: Image, is_sbs: bool, view: Dictionary,
  if extension == "png":
   return output.save_png(output_path)
  return output.save_jpg(output_path, 0.95)
+
+## Worker does not lock the viewer object; completion also works when processing is disabled.
+static func export_async(image: Image, is_sbs: bool, view: Dictionary, half_sbs: bool, path: String, completed: Callable) -> void:
+ var result := export_sbs(image, is_sbs, view, half_sbs, path)
+ completed.call_deferred(result, path)

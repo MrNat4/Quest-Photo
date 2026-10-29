@@ -1,3 +1,5 @@
+> **Windows local-model preparation (development revision 1):** Start with [these instructions](docs/WINDOWS_MODEL_PREPARATION.md). Double-click `Prepare-Models.cmd` in a separate checkout. No AI model has been validated here; this is not a completed 0.3.0 release. Keep your working 0.2.0 installation.
+
 > Version 2 maintenance: see [application instructions and headset checks](docs/V2_MAINTENANCE.md). Preserve your working local Gradle setup; historical baseline instructions below do not supersede it.
 
 # Quest Photo 0.2.0

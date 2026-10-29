@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 *.keystore
 *.apk
+
+.model-prep/
+models/*.onnx.bin
+models/validation/

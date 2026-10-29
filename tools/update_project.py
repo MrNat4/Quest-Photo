@@ -17,7 +17,7 @@ VERSION = "0.3.0"
 MIN_VERSION_CODE = 3
 SOURCE = Path(__file__).resolve().parents[1]
 DIRECTORIES = {"scripts", "scenes", "shaders", "assets", "models", "tools", "tests", "docs", "android_ai"}
-ROOT_FILES = {"README.md", "LICENSE", "openxr_action_map.tres", "icon.svg", "THIRD_PARTY_NOTICES.md"}
+ROOT_FILES = {"Prepare-Models.cmd", "README.md", "LICENSE", "openxr_action_map.tres", "icon.svg", "THIRD_PARTY_NOTICES.md"}
 SKIP_PARTS = {".git", ".godot", ".gradle", ".build", "build", "__pycache__", ".venv", "venv", "node_modules"}
 KEY_SUFFIXES = {".keystore", ".jks", ".p12", ".pem", ".key", ".apk", ".aab", ".pyc"}
 
