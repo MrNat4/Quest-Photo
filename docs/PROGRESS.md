@@ -72,3 +72,13 @@ milestone after gallery hardware acceptance. No model/stub depth is bundled.
 Next session: inspect Git; run tests; collect Quest 0.2.0 gallery/import results.
 Prioritize native chooser/return-to-VR fixes if hardware exposes them. Preserve
 the working stereo foundation and complete all device acceptance before AI work.
+
+
+## Version 2 grip/gallery maintenance
+
+User confirmed 0.2.0 immersive launch using Gradle but grip modifiers failed.
+Found engine action-name collision: grip_pose is renamed grip before duplicate
+checks, suppressing the analog grip action. Renamed only analog action to squeeze,
+preserved pose and existing controls. Added Help values, bounded event diagnostics,
+thumbnail failure logging and action-map/modifier/gallery regressions. See
+V2_MAINTENANCE.md for applying to the user-local Gradle project and device gates.

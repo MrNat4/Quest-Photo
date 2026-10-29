@@ -33,7 +33,7 @@ func _make_tracker(tracker_name: String, position: Vector3) -> XRControllerTrack
  tracker.set_pose("grip", Transform3D(Basis.IDENTITY, position), Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
  tracker.set_input("thumbstick", Vector2.ZERO)
  tracker.set_input("trigger", 0.0)
- tracker.set_input("grip", 0.0)
+ tracker.set_input("squeeze", 0.0)
  XRServer.add_tracker(tracker)
  return tracker
 
@@ -144,7 +144,7 @@ func _test_trackers() -> void:
  _check(app.state.swap_eyes != old_swap and app.current_index == old_index, "both triggers plus A swaps eyes without advancing photo")
  left_tracker.set_input("trigger", 0.0)
  right_tracker.set_input("trigger", 0.0)
- right_tracker.set_input("grip", 0.8)
+ right_tracker.set_input("squeeze", 0.8)
  app._process_controllers(0.05)
  _check(app.dragging, "right grip begins grab")
  app._on_unfocus()
@@ -174,7 +174,7 @@ func _test_trackers() -> void:
  app._process_controllers(0.05)
  _check(app.anchor.global_transform == lost_anchor and app.state.zoom == lost_zoom and app.state.panel_scale == lost_scale, "untracked right controller cannot move or resize panel")
  right_tracker.set_pose("grip", Transform3D(Basis.IDENTITY, Vector3(0.3, 1.3, -0.3)), Vector3.ZERO, Vector3.ZERO, XRPose.XR_TRACKING_CONFIDENCE_HIGH)
- right_tracker.set_input("grip", 0.0)
+ right_tracker.set_input("squeeze", 0.0)
  left_tracker.set_input("trigger", 0.8)
  left_tracker.invalidate_pose("grip")
  app._reset_view()

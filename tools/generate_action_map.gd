@@ -4,6 +4,8 @@
 # them without updating viewer input code and tests.
 # XRController3D: tracker="left_hand"/"right_hand", pose="aim"/"grip".
 # Godot maps aim_pose/grip_pose to these shorter tracker pose names.
+# IMPORTANT: do not name a float action grip: grip_pose is renamed to grip
+# before duplicate-action detection in Godot 4.6.3.
 # Primary: X (left), A (right). Secondary: Y (left), B (right).
 # Verified against Godot 4.6.3 modules/openxr/openxr_interface.cpp:
 # https://github.com/godotengine/godot/blob/4.6.3-stable/modules/openxr/openxr_interface.cpp
@@ -15,7 +17,7 @@ const DEFINITIONS := {
 	"aim_pose": [OpenXRAction.OPENXR_ACTION_POSE, "Aim pose", "aim/pose"],
 	"grip_pose": [OpenXRAction.OPENXR_ACTION_POSE, "Grip pose", "grip/pose"],
 	"trigger": [OpenXRAction.OPENXR_ACTION_FLOAT, "Trigger", "trigger/value"],
-	"grip": [OpenXRAction.OPENXR_ACTION_FLOAT, "Grip", "squeeze/value"],
+	"squeeze": [OpenXRAction.OPENXR_ACTION_FLOAT, "Grip", "squeeze/value"],
 	"thumbstick": [OpenXRAction.OPENXR_ACTION_VECTOR2, "Thumbstick", "thumbstick"],
 	"primary": [OpenXRAction.OPENXR_ACTION_BOOL, "Primary A or X", ""],
 	"secondary": [OpenXRAction.OPENXR_ACTION_BOOL, "Secondary B or Y", ""],

@@ -31,6 +31,7 @@ with tempfile.TemporaryDirectory(prefix="quest-photo-tests-") as temporary:
         ("storage", base + ["--script", "res://tests/test_storage.gd"]),
         ("gallery", base + ["--script", "res://tests/test_gallery.gd"]),
         ("viewer", base + ["--script", "res://tests/test_viewer.gd"]),
+        ("grip_gallery", base + ["--script", "res://tests/test_grip_gallery.gd"]),
         ("integration", base + ["--script", "res://tests/test_integration.gd"]),
         ("startup", base + ["--quit-after", "10"]),
         ("build-script-syntax", ["bash", "-n", "tools/build_android.sh"]),

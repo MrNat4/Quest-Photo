@@ -1,3 +1,5 @@
+> Version 2 maintenance: see [application instructions and headset checks](docs/V2_MAINTENANCE.md). Preserve your working local Gradle setup; historical baseline instructions below do not supersede it.
+
 # Quest Photo 0.2.0
 
 Godot **4.6.3** offline OpenXR photo viewer for Meta Quest 3. This continues the

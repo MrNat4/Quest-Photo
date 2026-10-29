@@ -1,3 +1,5 @@
+> Version 2 maintenance: see [V2_MAINTENANCE.md](V2_MAINTENANCE.md). Preserve your working local Gradle setup; historical baseline instructions below do not supersede it.
+
 # Version 0.2.0 build note
 
 The user successfully built and tested 0.1.0 on Quest 3. Preserve that working

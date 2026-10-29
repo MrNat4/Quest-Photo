@@ -47,6 +47,9 @@ var gallery_trigger_latched := false
 var pending_photo_index := -1
 var close_gallery_after_load := false
 var decoder_summary := ""
+var diagnostics: Array[Dictionary] = []
+var diagnostic_timer := 0.0
+var input_diagnostic_label: Label3D
 
 func _ready() -> void:
  _build_scene()
@@ -85,6 +88,9 @@ func _build_scene() -> void:
  help = _label(24, 0.0012)
  help.text = "Left grip + Y: GALLERY / IMPORT   A: next   Left grip + A: previous\nX: 2D / stereo   Left grip + X: image layout   B: reset   Y: help\nRight stick: size / rotate   Left stick: pan\nLeft trigger + right stick: zoom / convergence   Right grip: grab\nLeft stick click: recenter   Right stick click: calibration\nRight/left trigger + right stick click: full/half SBS export\nBoth triggers + right stick click: PNG/JPG; + A: swap eyes"
  anchor.add_child(help)
+ input_diagnostic_label = _label(20, 0.0012)
+ help.add_child(input_diagnostic_label)
+ input_diagnostic_label.position.y = -0.14
  var layer := CanvasLayer.new()
  add_child(layer)
  desktop_label = Label.new()
@@ -108,6 +114,7 @@ func _build_library_ui() -> void:
  gallery.import_requested.connect(_request_import)
  gallery.refresh_requested.connect(_refresh_library)
  gallery.layout_requested.connect(func(): _cycle_layout(gallery.selected_entry_index()))
+ gallery.diagnostic.connect(func(message: String): _record_diagnostic("gallery_failure", message))
  gallery.close_requested.connect(func(): _set_gallery_open(false))
  importer = Importer.new()
  add_child(importer)
@@ -137,6 +144,7 @@ func _set_gallery_open(value: bool) -> void:
   return
  dragging = false
  gallery_open = value
+ _record_diagnostic("gallery_open" if value else "gallery_closed")
  gallery_stick_latched = true
  gallery_trigger_latched = _trigger_held(right)
  gallery.visible = value
@@ -380,6 +388,11 @@ func _update_labels() -> void:
   desktop_label.text = "GALLERY · Arrows: select   Enter: open   G/Esc: return\nO: import   F5: refresh   M: selected image layout\n" + decoder_summary
 
 func _process(delta: float) -> void:
+ diagnostic_timer += delta
+ if diagnostic_timer >= 0.5:
+  diagnostic_timer = 0.0
+  if input_diagnostic_label != null and help_visible:
+   input_diagnostic_label.text = "Squeeze L %.2f / R %.2f · Tracked L %s / R %s" % [left.get_float("squeeze"), right.get_float("squeeze"), left.get_has_tracking_data(), right.get_has_tracking_data()]
  if xr_active and session_focused:
   if awaiting_head_pose:
    var head := XRServer.get_tracker("head") as XRPositionalTracker
@@ -426,7 +439,7 @@ func _process_controllers(delta: float) -> void:
    state.panel_scale *= exp(r.y * delta * 0.5)
    state.roll -= r.x * delta * 0.6
   _changed()
- var gripping := right.get_has_tracking_data() and right.get_float("grip") > 0.65
+ var gripping := right.get_has_tracking_data() and right.get_float("squeeze") > 0.65
  if gripping and not dragging:
   grab_offset = right.global_transform.affine_inverse() * anchor.global_transform
   dragging = true
@@ -439,6 +452,7 @@ func _process_controllers(delta: float) -> void:
    anchor.global_transform = proposed
 
 func _left_button(action: StringName) -> void:
+ _record_diagnostic("left:" + str(action))
  if not session_focused:
   return
  if importer != null and importer.is_busy():
@@ -463,6 +477,7 @@ func _left_button(action: StringName) -> void:
   "thumbstick_click": recenter()
 
 func _right_button(action: StringName) -> void:
+ _record_diagnostic("right:" + str(action))
  if not session_focused:
   return
  if importer != null and importer.is_busy():
@@ -494,7 +509,7 @@ func _right_button(action: StringName) -> void:
     _navigate_photo(0)
 
 func _grip_held(controller: XRController3D) -> bool:
- return controller.get_has_tracking_data() and controller.get_float("grip") > 0.65
+ return controller.get_has_tracking_data() and controller.get_float("squeeze") > 0.65
 
 func _trigger_held(controller: XRController3D) -> bool:
  return controller.get_has_tracking_data() and controller.get_float("trigger") > 0.6
@@ -561,6 +576,7 @@ func _save_view() -> void:
   _notice("Cannot save viewing settings: " + error_string(result))
 
 func _notice(message: String) -> void:
+ _record_diagnostic("notice", message)
  last_notice = message
  notice_until = Time.get_ticks_msec() + 6000
  if status != null:
@@ -637,3 +653,24 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
  if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
   _save_view()
+
+func _input_snapshot(controller: XRController3D) -> Dictionary:
+ var tracker := XRServer.get_tracker(controller.tracker) as XRControllerTracker
+ return {"tracked": controller.get_has_tracking_data(), "squeeze": controller.get_float("squeeze"),
+  "trigger": controller.get_float("trigger"), "squeeze_present": tracker != null and tracker.get_input("squeeze") != null,
+  "profile": str(tracker.get_tracker_profile()) if tracker != null else "unavailable"}
+
+func _record_diagnostic(event: String, message: String = "") -> void:
+ if left == null or right == null:
+  return
+ var row := {"time_ms": Time.get_ticks_msec(), "event": event, "message": message.left(200),
+  "left": _input_snapshot(left), "right": _input_snapshot(right),
+  "focused": session_focused, "gallery_open": gallery_open,
+  "import_busy": importer != null and importer.is_busy()}
+ diagnostics.append(row)
+ if diagnostics.size() > 100:
+  diagnostics.pop_front()
+ print("QuestPhoto diagnostic: ", JSON.stringify(row))
+ var file := FileAccess.open("user://controller-gallery-diagnostics.json", FileAccess.WRITE)
+ if file != null:
+  file.store_string(JSON.stringify(diagnostics, "  "))

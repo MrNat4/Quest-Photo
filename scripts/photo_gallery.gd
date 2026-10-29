@@ -8,6 +8,7 @@ signal photo_selected(index: int)
 signal import_requested
 signal refresh_requested
 signal layout_requested
+signal diagnostic(message: String)
 signal close_requested
 const Cache = preload("res://scripts/thumbnail_cache.gd")
 const PAGE_SIZE := 6
@@ -209,6 +210,8 @@ func _request_page() -> void:
    cache.request(entries[index])
 
 func _thumbnail_ready(key: String, texture: Texture2D, error: String) -> void:
+ if texture == null:
+  diagnostic.emit("Thumbnail " + key.left(12) + ": " + error)
  # A worker from the previous page may complete after a page turn.
  for slot in _keys.size():
   if _keys[slot] != key:
