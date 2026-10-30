@@ -194,7 +194,11 @@ func _cleanup() -> void:
 func _exit_tree() -> void:
  cancel()
  if _thread != null and _thread.is_started():
-  _thread.wait_to_finish()
+  var finished: Dictionary = _thread.wait_to_finish()
+  if finished.has("work"):
+   _work = finished.work
+ if _stage != "inference":
+  _cleanup()
  # Native cancellation may still be finishing; never delete its active input here.
  if backend != null:
   backend.release_model()

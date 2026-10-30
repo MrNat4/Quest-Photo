@@ -47,6 +47,18 @@ class BuilderTests(unittest.TestCase):
   self.assertIn('version/name="0.3.0-dev.71"',(stage/'export_presets.cfg').read_text())
   with self.assertRaises(ValueError):stage_project(ROOT,working,self.models,working/'child',72)
   with self.assertRaises(ValueError):stage_project(ROOT,working,self.models,stage,72)
+ def test_custom_gradle_base_and_signing_guard(self):
+  working=self.working();external=self.root/'custom-android';(external/'build').mkdir(parents=True)
+  (external/'build/build.gradle').write_text('// custom template')
+  (external/'.build_version').write_text('4.6.3.stable')
+  preset=working/'export_presets.cfg';preset.write_text(preset.read_text()+'\ngradle_build/gradle_build_directory='+json.dumps(str(external))+'\n')
+  stage=self.root/'staged';stage_project(ROOT,working,self.models,stage,72)
+  self.assertEqual((stage/'android/build/build.gradle').read_text(),'// custom template')
+  self.assertEqual((stage/'android/.build_version').read_text(),'4.6.3.stable')
+  self.assertIn('gradle_build/gradle_build_directory="res://android"',(stage/'export_presets.cfg').read_text())
+  self.assertTrue(preset_debug_key(stage,'Quest 3'))
+  (stage/'private.keystore').unlink()
+  with self.assertRaisesRegex(ValueError,'keystore cannot'):preset_debug_key(stage,'Quest 3')
  def test_apk_missing_models_fails_before_external_commands(self):
   apk=self.root/'bad.apk'
   with zipfile.ZipFile(apk,'w') as z:z.writestr('dummy',b'not-a-production-apk')
@@ -63,7 +75,7 @@ class BuilderTests(unittest.TestCase):
   settings=self.root/'settings.tres';settings.write_text('[resource]\nexport/android/debug_keystore="C:/existing/debug.keystore"\nexport/android/debug_keystore_user="existing-alias"\n')
   original=settings.read_bytes();templates=self.root/'templates';templates.mkdir();(templates/'android_debug.apk').write_bytes(b'template')
   build=self.root/'build';build.mkdir()
-  result=portable_editor(exe,build,self.root/'sdk',self.root/'jdk',[settings],[templates],[])
+  result=portable_editor(exe,build,self.root/'sdk',self.root/'jdk',[settings],[templates],[],preset_has_key=True)
   self.assertTrue(result.is_file());self.assertEqual(original,settings.read_bytes())
   copied=(build/'editor/editor_data/editor_settings-4.6.tres').read_text()
   self.assertIn('existing-alias',copied);self.assertIn('C:/existing/debug.keystore',copied)

@@ -57,10 +57,10 @@ def stage_project(package,working,models,destination,code):
  if destination==working or working in destination.parents or destination in working.parents:raise ValueError('Build staging must be outside your working project')
  if destination.exists():raise ValueError('Refusing to replace existing build folder')
  def ignore(directory,names):
-  skipped={'.git','.godot','.gradle','.model-prep','__pycache__','builds','.build'}
+  skipped={'.git','.godot','.gradle','.model-prep','__pycache__','builds','.build','.venv','venv'}
   if Path(directory).name!='android':skipped.add('build')
   if Path(directory)==working:skipped.add('models')
-  return [n for n in names if n in skipped or n.lower().endswith(('.apk','.aab'))]
+  return [n for n in names if n in skipped or n.startswith('.quest-photo-backup-') or n.lower().endswith(('.apk','.aab'))]
  shutil.copytree(working,destination,ignore=ignore,symlinks=False)
  # Godot's credential file belongs only to this local build copy; never distribute it.
  credential=working/'.godot/export_credentials.cfg'
@@ -75,7 +75,7 @@ def stage_project(package,working,models,destination,code):
  for name in MODEL_IDS:shutil.copy2(models/(name+'.onnx.bin'),destination/'models'/(name+'.onnx.bin'))
  shutil.copy2(models/'catalog.json',destination/'models/catalog.json')
  if (models/'licenses').is_dir():shutil.copytree(models/'licenses',destination/'models/licenses')
- for relative in ('LICENSE','android_ai/licenses'):
+ for relative in ('LICENSE','THIRD_PARTY_NOTICES.md','android_ai/licenses'):
   p=package/relative
   if p.is_dir():shutil.copytree(p,destination/'third_party'/Path(relative).name,dirs_exist_ok=True)
   elif p.is_file():shutil.copy2(p,destination/p.name)
@@ -84,6 +84,7 @@ def stage_project(package,working,models,destination,code):
  values=sections(project.read_text(encoding='utf-8-sig'))
  for i,(header,body) in enumerate(values):
   if header=='[application]':values[i]=(header,set_option(body,'config/version',json.dumps(version)))
+  if header=='[rendering]':values[i]=(header,set_option(body,'textures/vram_compression/import_etc2_astc','true'))
  project.write_text(join_sections(values),encoding='utf-8')
  preset_path=destination/'export_presets.cfg'
  text=preset_path.read_text(encoding='utf-8-sig')
@@ -117,7 +118,7 @@ def stage_project(package,working,models,destination,code):
      if (destination/'android/build').exists():shutil.rmtree(destination/'android/build')
      shutil.copytree(custom_path,destination/'android/build',ignore=ignore)
      if (custom_path.parent/'.build_version').is_file():shutil.copy2(custom_path.parent/'.build_version',destination/'android/.build_version')
-   updates={'gradle_build/use_gradle_build':'true','gradle_build/gradle_build_directory':'"res://android"','gradle_build/export_format':'0','gradle_build/min_sdk':str(max(26,int(option(b,'gradle_build/min_sdk','0')))),'plugins/QuestDepth':'true','architectures/arm64-v8a':'true','architectures/armeabi-v7a':'false','architectures/x86':'false','architectures/x86_64':'false','version/code':str(code),'version/name':json.dumps(version)}
+   updates={'gradle_build/use_gradle_build':'true','gradle_build/gradle_build_directory':'"res://android"','gradle_build/export_format':'0','gradle_build/min_sdk':json.dumps(str(max(26,int(option(b,'gradle_build/min_sdk','0') or '0')))),'plugins/QuestDepth':'true','architectures/arm64-v8a':'true','architectures/armeabi-v7a':'false','architectures/x86':'false','architectures/x86_64':'false','version/code':str(code),'version/name':json.dumps(version)}
    for k,v in updates.items():b=set_option(b,k,v)
    values[i]=(h,b)
  preset_path.write_text(join_sections(values),encoding='utf-8')
@@ -155,7 +156,23 @@ def verify_apk(apk,models,expected,build_tools,java):
  subprocess.run([str(java),'-jar',str(Path(build_tools)/'lib/apksigner.jar'),'verify','--verbose',str(apk)],check=True)
  return {'apk':str(apk),'sha256':digest(apk),'models':models,'identity':expected,'arm64':True,'signature_verified':True}
 
-def portable_editor(godot,build,sdk,jdk,settings_files,template_folders,debug_key_candidates):
+def preset_debug_key(project,preset_name):
+ """Read existing signing configuration; do not generate a replacement key."""
+ project=Path(project)
+ values=sections((project/'export_presets.cfg').read_text(encoding='utf-8-sig'))
+ index=next(re.search(r'\d+',h).group() for h,b in values if re.fullmatch(r'\[preset\.\d+\]',h) and option(b,'name')==preset_name)
+ credential=project/'.godot/export_credentials.cfg'
+ private=sections(credential.read_text(encoding='utf-8-sig')) if credential.is_file() else []
+ body=next((b for h,b in private if h==f'[preset.{index}]'),'')
+ public=next((b for h,b in values if h==f'[preset.{index}.options]'),'')
+ key=os.environ.get('GODOT_ANDROID_KEYSTORE_DEBUG_PATH') or option(body,'keystore/debug') or option(public,'keystore/debug')
+ if not key:return False
+ path=project/key[6:] if key.startswith('res://') else Path(key)
+ if not path.is_absolute():path=project/path
+ if not path.is_file():raise ValueError('Existing preset debug keystore cannot be found: '+str(path))
+ return True
+
+def portable_editor(godot,build,sdk,jdk,settings_files,template_folders,debug_key_candidates,preset_has_key=False):
  """Clone the editor into self-contained mode; never write the user's editor profile."""
  godot,build,sdk,jdk=map(Path,(godot,build,sdk,jdk))
  bin_dir=build/'editor';bin_dir.mkdir()
@@ -174,6 +191,9 @@ def portable_editor(godot,build,sdk,jdk,settings_files,template_folders,debug_ke
  if not configured_key:
   found=next((Path(p) for p in debug_key_candidates if Path(p).is_file()),None)
   if found:contents=set_option(contents,'export/android/debug_keystore',json.dumps(str(found).replace('\\','/')))
+ configured_key=option(contents,'export/android/debug_keystore')
+ if not preset_has_key and (not configured_key or not Path(configured_key).is_file()):
+  raise ValueError('Cannot locate your existing debug signing key. Refusing to generate a different key; select the editor/project that produced your working APK.')
  # Keep aliases/passwords from existing settings. No keystore is generated by this helper.
  (data/'editor_settings-4.6.tres').write_text(contents,encoding='utf-8')
  template=next((Path(p) for p in template_folders if (Path(p)/'android_debug.apk').is_file()),None)

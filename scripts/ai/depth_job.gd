@@ -77,6 +77,8 @@ func prepare(job: Dictionary) -> Dictionary:
     return result
    var chunk := input.get_buffer(mini(1024 * 1024, input.get_length() - input.get_position()))
    if chunk.is_empty():
+    output.close()
+    DirAccess.remove_absolute(target + ".partial")
     result["error"] = "Cannot read installed model bytes."
     return result
    hashing.update(chunk)

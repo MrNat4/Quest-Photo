@@ -1,0 +1,12 @@
+test_apk_detects_corrupted_model_before_claiming_success (test_apk_builder.BuilderTests.test_apk_detects_corrupted_model_before_claiming_success) ... ok
+test_apk_missing_models_fails_before_external_commands (test_apk_builder.BuilderTests.test_apk_missing_models_fails_before_external_commands) ... ok
+test_custom_gradle_base_and_signing_guard (test_apk_builder.BuilderTests.test_custom_gradle_base_and_signing_guard) ... ok
+test_portable_editor_preserves_existing_profile (test_apk_builder.BuilderTests.test_portable_editor_preserves_existing_profile) ... ok
+test_stage_preserves_original_project_models_and_credentials (test_apk_builder.BuilderTests.test_stage_preserves_original_project_models_and_credentials) ... ok
+test_unvalidated_catalog_rejected (test_apk_builder.BuilderTests.test_unvalidated_catalog_rejected) ... ok
+test_validated_models_and_corruption (test_apk_builder.BuilderTests.test_validated_models_and_corruption) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.039s
+
+OK

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="org.questphoto.depth.QuestDepthTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-29T19:07:37" hostname="4639408a8268" time="14.153">
+  <properties/>
+  <testcase name="existingOutputAndBadModelDoNotChangeOriginals" classname="org.questphoto.depth.QuestDepthTest" time="13.602"/>
+  <testcase name="realRuntimePreprocessOutputAndSessionReuse" classname="org.questphoto.depth.QuestDepthTest" time="0.265"/>
+  <testcase name="switchClosesPreviousAndPreservesOutputs" classname="org.questphoto.depth.QuestDepthTest" time="0.165"/>
+  <testcase name="cancellationAndBusyGuard" classname="org.questphoto.depth.QuestDepthTest" time="0.118"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
