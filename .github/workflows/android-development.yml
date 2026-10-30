@@ -1,47 +1,29 @@
-name: Build Z-Dim Android development package
+name: Publish recovered Z-Dim autobuilder package
 on:
+  push:
+    branches: [development/0.3.0-android-integration]
+    paths: ['delivery/0.3.0-dev2026103001/**', '.github/workflows/android-development.yml']
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
-  native-plugin-and-package:
+  publish-existing-archive:
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10.2'
-      - name: Obtain exact Godot interface and Android SDK
+      - name: Reassemble the already-built archive and verify its original hash
         run: |
-          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
-          curl --fail --location --output "$RUNNER_TEMP/godot.aar" https://repo.maven.apache.org/maven2/org/godotengine/godot/4.6.3.stable/godot-4.6.3.stable.aar
-      - name: Compile plugin and exercise real ONNX Runtime bridge
-        run: |
-          gradle -p android_ai "-PgodotAar=$RUNNER_TEMP/godot.aar" installPlugin testReleaseUnitTest --no-daemon
-          mkdir -p build/java-tests
-          javac -d build/java-tests android_ai/src/main/java/org/questphoto/depth/DepthFile.java android_ai/tests/DepthFileTest.java
-          java -cp build/java-tests DepthFileTest
-          python -m unittest discover -s tests -p test_apk_builder.py -v
-      - name: Package source, compiled plugin and runtime
-        run: python tools/package_android_development.py --id "$GITHUB_RUN_NUMBER$GITHUB_RUN_ATTEMPT"
-      - name: Publish one complete development package
+          mkdir -p distribution
+          cat delivery/0.3.0-dev2026103001/*.part > distribution/ZDim-0.3.0-Android-Dev2026103001.zip
+          cd distribution
+          printf '%s\n' 'f6aecebf57501193d3e07140eedba414ffafdc8c512baa74efe0d77e89f776cf  ZDim-0.3.0-Android-Dev2026103001.zip' > ZDim-0.3.0-Android-Dev2026103001.zip.sha256
+          sha256sum -c ZDim-0.3.0-Android-Dev2026103001.zip.sha256
+      - name: Publish the existing package without compiling or processing models
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          build_id="$GITHUB_RUN_NUMBER$GITHUB_RUN_ATTEMPT"
-          gh release create "zdim-0.3.0-android-dev${build_id}" build/distribution/* \
+          gh release create zdim-0.3.0-android-dev2026103001 distribution/* \
             --target "$GITHUB_SHA" --prerelease \
-            --title "Z-Dim 0.3.0 Android development ${build_id}" \
+            --title 'Z-Dim 0.3.0 — recovered Windows autobuilder package' \
             --notes-file docs/ANDROID_BUILD_QUICKSTART.md
-      - name: Preserve test results on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-test-results
-          path: android_ai/build/reports/tests/
