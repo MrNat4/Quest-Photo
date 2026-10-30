@@ -1,0 +1,27 @@
+{
+  "apk": "/workspace/toolchain/android-integration/smoke/build/packaging-fixture.apk",
+  "sha256": "724390384cede380e341dc274e2630a76a9e8241aea6f54cfc9b2a8552f17523",
+  "models": {
+    "v2_small": {
+      "sha256": "dd36ee0172c1f9b4cc4043fc20f075865555f67c62b98630518fd08e5cea63f1",
+      "bytes": 151
+    },
+    "v3_small": {
+      "sha256": "dd36ee0172c1f9b4cc4043fc20f075865555f67c62b98630518fd08e5cea63f1",
+      "bytes": 151
+    },
+    "v3_base": {
+      "sha256": "dd36ee0172c1f9b4cc4043fc20f075865555f67c62b98630518fd08e5cea63f1",
+      "bytes": 151
+    }
+  },
+  "identity": {
+    "preset": "Quest 3",
+    "package": "org.questphoto.viewer",
+    "version": "0.3.0-dev.9001",
+    "code": 9001
+  },
+  "arm64": true,
+  "signature_verified": true,
+  "fixture_only": "Arithmetic graph; NOT pretrained AI, not delivered as usable app"
+}

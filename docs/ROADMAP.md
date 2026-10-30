@@ -86,3 +86,15 @@ transforms and reconstructed backgrounds. Generative hidden surfaces, deformable
 hair/clothing, hand physics and training from corrections are aspirational, with
 no implementation or delivery promise. Do not add those dependencies to the
 initial stereoscopic photo application.
+
+## Android integration checkpoint — 2026-10-29
+
+User reports all three real pretrained models converted and validated on Windows.
+Native plugin now compiles against Godot 4.6.3; Java/ORT bridge tests and an
+actual signed ARM64 packaging build pass using explicit test fixtures.
+The isolated Windows APK builder combines the working local configuration,
+validated models and packaged native components, then checks the resulting APK.
+All three model choices, both quality modes, saved comparisons, genuine
+depth reprojection, adjustments, original restoration and exports are implemented.
+Headset inference/quality/performance and Windows GUI execution remain unverified.
+See ANDROID_BUILD_QUICKSTART.md and verification/android-integration.

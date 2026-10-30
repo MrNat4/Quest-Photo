@@ -1,7 +1,7 @@
 """Guided, isolated APK build using the user's existing Godot/SDK/JDK/Gradle."""
 from pathlib import Path
 import json,os,re,shutil,subprocess,sys,time,traceback,uuid
-from apk_builder.core import verify_models,verify_components,stage_project,verify_apk,portable_editor,option,sections,android_presets
+from apk_builder.core import verify_models,verify_components,stage_project,verify_apk,portable_editor,preset_debug_key,option,sections,android_presets
 PACKAGE=Path(__file__).resolve().parents[1]
 
 def run(args,log,env=None):
@@ -80,7 +80,7 @@ def main():
  env['PATH']=str(jdk/'bin')+os.pathsep+env.get('PATH','')
  template_folders=[Path(os.environ.get('APPDATA',''))/'Godot/export_templates/4.6.3.stable',godot.parent/'editor_data/export_templates/4.6.3.stable']
  keys=[Path(os.environ.get('APPDATA',''))/'Godot/debug.keystore',godot.parent/'editor_data/debug.keystore',Path.home()/'.android/debug.keystore']
- godot=portable_editor(godot,build,sdk,jdk,settings,template_folders,keys)
+ godot=portable_editor(godot,build,sdk,jdk,settings,template_folders,keys,preset_debug_key(stage,expected['preset']))
  apk=build/(f'ZDim-0.3.0-dev.{code}.apk')
  run([str(godot),'--headless','--xr-mode','off','--path',str(stage),'--editor','--import','--quit'],build/'import.log',env)
  run([str(godot),'--headless','--xr-mode','off','--path',str(stage),'--export-debug',expected['preset'],str(apk)],build/'export.log',env)

@@ -1,0 +1,29 @@
+name: Publish recovered Z-Dim autobuilder package
+on:
+  push:
+    branches: [development/0.3.0-android-integration]
+    paths: ['delivery/0.3.0-dev2026103001/**', '.github/workflows/android-development.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish-existing-archive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reassemble the already-built archive and verify its original hash
+        run: |
+          mkdir -p distribution
+          cat delivery/0.3.0-dev2026103001/*.part > distribution/ZDim-0.3.0-Android-Dev2026103001.zip
+          cd distribution
+          printf '%s\n' 'f6aecebf57501193d3e07140eedba414ffafdc8c512baa74efe0d77e89f776cf  ZDim-0.3.0-Android-Dev2026103001.zip' > ZDim-0.3.0-Android-Dev2026103001.zip.sha256
+          sha256sum -c ZDim-0.3.0-Android-Dev2026103001.zip.sha256
+      - name: Publish the existing package without compiling or processing models
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create zdim-0.3.0-android-dev2026103001 distribution/* \
+            --target "$GITHUB_SHA" --prerelease \
+            --title 'Z-Dim 0.3.0 — recovered Windows autobuilder package' \
+            --notes-file docs/ANDROID_BUILD_QUICKSTART.md

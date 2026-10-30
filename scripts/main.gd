@@ -778,7 +778,7 @@ func _compare_saved_result() -> void:
   var index: int = (conversion.selected_model + step) % 3
   var key := Conversion.Store.key_for(hash, Conversion.MODELS[index], conversion.quality_name())
   if not Conversion.Store.load_record(key).is_empty():
-   if conversion.backend != null:
+   if index != conversion.selected_model and conversion.backend != null:
     conversion.backend.release_model()
    conversion.selected_model = index
    conversion.start(original_entry)
