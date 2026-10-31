@@ -1,4 +1,6 @@
-> **Current Android development package:** [One-click Windows APK build](docs/ANDROID_BUILD_QUICKSTART.md). Your validated models are reused unchanged; model conversion is finished. Use `Build-ZDim.cmd` from the development release ZIP.
+> **Current source-only update: Z-Dim 0.3.1.** [Download the source update ZIP](releases/ZDim-0.3.1-source-update.zip?raw=true). [Quality modes, MediaStore exports, and applying to your existing Godot project](docs/QUALITY_EXPORT_031.md). No APK/build workflow or model conversion is part of this update. The 0.3.0 build instructions below are historical.
+
+> **Archived 0.3.0 Android development package:** [One-click Windows APK build](docs/ANDROID_BUILD_QUICKSTART.md). Your validated models are reused unchanged; model conversion is finished. Use `Build-ZDim.cmd` from the development release ZIP.
 
 > **Current model-preparation patch: revision 4.** [V3 compatibility fix and complete-model test results](docs/MODEL_PREP_REVISION4.md). Preserves V2 output and the existing environment.
 

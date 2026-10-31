@@ -82,3 +82,12 @@ checks, suppressing the analog grip action. Renamed only analog action to squeez
 preserved pose and existing controls. Added Help values, bounded event diagnostics,
 thumbnail failure logging and action-map/modifier/gallery regressions. See
 V2_MAINTENANCE.md for applying to the user-local Gradle project and device gates.
+
+## 0.3.1 quality/export update — 2026-10-31
+
+Three quality modes, image-guided depth refinement, subpixel surface coverage,
+separate raw/preview caches, processing timings and MediaStore Pictures/Z-Dim
+exports are implemented in GDScript. No new native dependency or APK build.
+See [the 0.3.1 notes](QUALITY_EXPORT_031.md) for source-update steps and measured
+desktop comparisons. Headset visual quality, JNI/MediaStore operation and
+File Manager+ visibility require physical testing; no on-device result is claimed.

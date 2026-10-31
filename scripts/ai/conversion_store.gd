@@ -9,6 +9,8 @@ static func source_hash(path: String) -> String:
  return FileAccess.get_sha256(raw) if FileAccess.file_exists(raw) else ""
 
 static func key_for(hash: String, model: String, quality: String) -> String:
+ # Maximum and High share the SAME 518 inference and immutable raw depth.
+ quality = "High Quality" if quality == "Maximum Quality" else quality
  var revision := ""
  if FileAccess.file_exists("res://models/catalog.json"):
   var catalog: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://models/catalog.json"))
@@ -93,3 +95,13 @@ static func adjustments(key: String) -> Dictionary:
 
 static func valid_key(key: String) -> bool:
  return key.length() == 64 and key.is_valid_hex_number(false)
+
+static func preview_path(key: String, quality: String) -> String:
+ return ROOT.path_join(key).path_join("preview-0.3.1-" + str(["Balanced", "High Quality", "Maximum Quality"].find(quality)))
+
+static func load_preview_info(key: String, quality: String) -> Dictionary:
+ var path := preview_path(key, quality) + ".json"
+ if not FileAccess.file_exists(path):
+  return {}
+ var value: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+ return value if value is Dictionary else {}

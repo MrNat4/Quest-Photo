@@ -27,7 +27,7 @@ func prepare(job: Dictionary) -> Dictionary:
  var key := Store.key_for(hash, str(job.model), str(job.quality))
  var cached := Store.load_record(key)
  var loader := Library.new()
- var image: Image = loader.load_image(job.entry, 1536 if job.quality == "High Quality" else 1024)
+ var image: Image = loader.load_image(job.entry, Reproject.max_side_for(Reproject.quality_index(job.quality)))
  if image == null:
   return {"error": loader.error_message}
  var result := {"hash": hash, "key": key, "source": image, "cached": cached}
@@ -45,7 +45,13 @@ func prepare(job: Dictionary) -> Dictionary:
   return {"error": "Cannot create AI working directory: " + error_string(err)}
  result["work"] = work
  result["raw_path"] = work.path_join("raw.qpd")
- err = image.save_png(work.path_join("input.png"))
+ # Maximum changes reconstruction only; feed inference the identical High
+ # source decode (1536 cap) instead of a differently resampled 2048 working copy.
+ var inference_source: Image = loader.load_image(job.entry, 1536) if job.quality == "Maximum Quality" else image
+ if inference_source == null:
+  result["error"] = loader.error_message
+  return result
+ err = inference_source.save_png(work.path_join("input.png"))
  if err != OK:
   result["error"] = "Cannot save processing copy."
   return result
@@ -98,14 +104,18 @@ func prepare(job: Dictionary) -> Dictionary:
  return result
 
 func reconstruct(save_raw: bool, intensity: float, plane: float) -> Dictionary:
- var cached_image := Store.ROOT.path_join(_key).path_join("preview.png")
- var previous := Store.adjustments(_key)
- if not save_raw and FileAccess.file_exists(cached_image) and is_equal_approx(float(previous.strength), intensity) and is_equal_approx(float(previous.plane), plane):
-  var decoded := Image.new()
-  if decoded.load_png_from_buffer(FileAccess.get_file_as_bytes(cached_image)) == OK:
-   return {"image": decoded, "record": _record, "raw_path": _job.raw_path}
  if Store.source_hash(str(_job.source_path)) != str(_job.source_sha256):
   return {"error": "Source changed during conversion."}
+ var preview := Store.preview_path(_key, _job.quality)
+ var cached_image := preview + ".png"
+ var previous := Store.load_preview_info(_key, _job.quality)
+ if not save_raw and previous.get("renderer") == Reproject.REVISION and is_equal_approx(float(previous.get("strength", -1)), intensity) and is_equal_approx(float(previous.get("plane", -1)), plane) and FileAccess.file_exists(cached_image):
+  var decoded := Image.new()
+  if decoded.load_png_from_buffer(FileAccess.get_file_as_bytes(cached_image)) == OK:
+   _record["reconstruction_ms"] = 0
+   _record["total_ms"] = Time.get_ticks_msec() - int(_job.get("started_ms", Time.get_ticks_msec()))
+   _record["preview_reused"] = true
+   return {"image": decoded, "record": _record, "raw_path": _job.raw_path}
  var raw_path := str(_job.raw_path)
  var raw := Store.read_depth(raw_path)
  if raw == null:
@@ -126,7 +136,9 @@ func reconstruct(save_raw: bool, intensity: float, plane: float) -> Dictionary:
     var v := raw.get_pixel(x, y).r
     depth.set_pixel(x, y, Color(1.0 / maxf(v, 0.000001), 0, 0))
  var begin := Time.get_ticks_msec()
- var image: Image = Reproject.reconstruct(_source, depth, intensity, plane, _job.quality == "High Quality", func() -> bool: return is_cancelled())
+ var image: Image = Reproject.reconstruct(_source, depth, intensity, plane, _job.quality, func() -> bool: return is_cancelled())
+ _record["reconstruction_ms"] = Time.get_ticks_msec() - begin
+ _record["preview_reused"] = false
  if image == null:
   return {"error": "Stereo reconstruction failed: invalid image or depth data."}
  if is_cancelled():
@@ -136,7 +148,18 @@ func reconstruct(save_raw: bool, intensity: float, plane: float) -> Dictionary:
   saved = DirAccess.rename_absolute(cached_image + ".pending", cached_image)
  if saved != OK:
   return {"error": "Cannot cache finished stereo image."}
- Store.save_adjustments(_key, intensity, plane)
- _record["reconstruction_ms"] = Time.get_ticks_msec() - begin
+ if Store.save_adjustments(_key, intensity, plane) != OK:
+  return {"error": "Cannot persist stereo adjustments."}
+ _record["total_ms"] = Time.get_ticks_msec() - int(_job.get("started_ms", begin))
+ var info := _record.duplicate(true)
+ info.merge({"strength": intensity, "plane": plane, "renderer": Reproject.REVISION}, true)
+ var metadata := FileAccess.open(preview + ".json.pending", FileAccess.WRITE)
+ if metadata == null:
+  return {"error": "Cannot save reconstruction timing/quality metadata."}
+ metadata.store_string(JSON.stringify(info))
+ var write_error := metadata.get_error()
+ metadata.close()
+ if write_error != OK or DirAccess.rename_absolute(preview + ".json.pending", preview + ".json") != OK:
+  return {"error": "Cannot finalize reconstruction metadata."}
  return {"image": image, "record": _record, "raw_path": _job.raw_path}
 

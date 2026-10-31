@@ -10,7 +10,12 @@ var _worker: RefCounted
 const MODELS := ["v2_small", "v3_small", "v3_base"]
 const NAMES := ["V2 Small", "V3 Small", "V3 Base"]
 var selected_model := 0
-var high_quality := false
+const QUALITIES := ["Balanced", "High Quality", "Maximum Quality"]
+var quality := 0
+# Compatibility for existing callers; UI uses the three-state quality index.
+var high_quality: bool:
+ get: return quality > 0
+ set(value): quality = 1 if value else 0
 var strength := 0.02
 var screen_plane := 0.5
 var busy := false
@@ -37,7 +42,7 @@ func model_name() -> String:
  return NAMES[selected_model]
 
 func quality_name() -> String:
- return "High Quality" if high_quality else "Balanced"
+ return QUALITIES[quality]
 
 func select_next_model() -> void:
  if busy:
@@ -65,7 +70,7 @@ func start(entry: Dictionary) -> void:
  _job = {"entry": entry.duplicate(true), "model": model_id, "model_name": model_name(),
   "quality": quality_name(), "resolution": 518 if high_quality else 364,
   "inverse_depth": selected_model == 0, "model_info": info,
-  "source_path": str(entry.get("path", ""))}
+  "source_path": str(entry.get("path", "")), "started_ms": Time.get_ticks_msec()}
  _started = Time.get_ticks_msec()
  _cancelled = false
  busy = true
@@ -102,6 +107,9 @@ func _process(delta: float) -> void:
    _job["raw_path"] = result.raw_path
    if not result.cached.is_empty():
     _record = result.cached
+    _record["quality"] = _job.quality
+    _record["job_inference_ms"] = 0
+    _record["depth_reused"] = true
     _record["source_path"] = _job.source_path
     var adjustment := Store.adjustments(_key)
     strength = adjustment.strength
@@ -122,7 +130,7 @@ func _process(delta: float) -> void:
    _completed_context = {"job": _job.duplicate(true), "source": _source, "record": _record.duplicate(true), "key": _key}
    result_ready.emit(result.image, _record.duplicate(true))
    _cleanup()
-   _status("Showing " + str(_record.model_name) + " · " + str(_record.quality) + " · %.1f s" % (float(_record.get("inference_ms", 0)) / 1000.0))
+   _status("%s · %s · AI %.2fs / render %.2fs / total %.2fs%s" % [_record.model_name, _record.quality, float(_record.get("job_inference_ms", 0)) / 1000.0, float(_record.get("reconstruction_ms", 0)) / 1000.0, float(_record.get("total_ms", 0)) / 1000.0, " (cached depth)" if _record.get("depth_reused", false) else ""])
  if _stage == "inference" and busy:
   _poll += delta
   if _poll < 0.2:
@@ -139,6 +147,9 @@ func _process(delta: float) -> void:
    _record.erase("entry")
    _record.erase("raw_path")
    _record["inference_ms"] = native.get("inference_ms", Time.get_ticks_msec() - _started)
+   _record["job_inference_ms"] = _record.inference_ms
+   _record["native_total_ms"] = native.get("total_ms", _record.inference_ms)
+   _record["depth_reused"] = false
    _record["created_utc"] = Time.get_datetime_string_from_system(true)
    _start_reconstruction(true)
   elif native.get("state") in ["error", "cancelled"]:
@@ -159,8 +170,11 @@ func adjust(delta_strength: float, delta_plane: float) -> void:
   _status("Show a saved conversion before adjusting its depth.")
   return
  _job = _completed_context.job.duplicate(true)
+ _job["started_ms"] = Time.get_ticks_msec()
  _source = _completed_context.source
  _record = _completed_context.record.duplicate(true)
+ _record["job_inference_ms"] = 0
+ _record["depth_reused"] = true
  _key = _completed_context.key
  strength = clampf(strength + delta_strength, 0, 0.04)
  screen_plane = clampf(screen_plane + delta_plane, 0, 1)

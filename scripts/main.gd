@@ -393,7 +393,7 @@ func _update_labels() -> void:
   mode += " · Left grip + B: AI conversion"
  status.text = "%s\n%s  |  Zoom %.2fx  |  Size %.2fx" % [title, mode, state.zoom, state.panel_scale]
  if not displayed_conversion.is_empty():
-  status.text += "\nDisplayed: %s · %s · %.1f s" % [displayed_conversion.get("model_name", ""), displayed_conversion.get("quality", ""), float(displayed_conversion.get("inference_ms", 0)) / 1000.0]
+  status.text += "\nDisplayed: %s · %s\nAI %.2fs · reconstruction %.2fs · total %.2fs" % [displayed_conversion.get("model_name", ""), displayed_conversion.get("quality", ""), float(displayed_conversion.get("job_inference_ms", 0)) / 1000.0, float(displayed_conversion.get("reconstruction_ms", 0)) / 1000.0, float(displayed_conversion.get("total_ms", 0)) / 1000.0]
  if Time.get_ticks_msec() < notice_until:
   status.text += "\n" + last_notice
  help.visible = help_visible
@@ -552,7 +552,8 @@ func _export_view(half_sbs: bool) -> void:
   return
  if current_entry.is_empty():
   return
- var folder := "user://exports"
+ var shared := OS.get_name() == "Android"
+ var folder := "user://export-staging" if shared else "user://exports"
  var result := DirAccess.make_dir_recursive_absolute(folder)
  if result != OK:
   _notice("Cannot create export folder: " + error_string(result))
@@ -570,7 +571,10 @@ func _export_view(half_sbs: bool) -> void:
   suffix += 1
  export_thread = Thread.new()
  export_busy = true
- result = export_thread.start(Exporter.export_async.bind(image, bool(current_entry.sbs), state.to_dictionary(), half_sbs, path, _export_finished))
+ if shared:
+  result = export_thread.start(Exporter.export_shared_async.bind(image, bool(current_entry.sbs), state.to_dictionary(), half_sbs, path, _shared_export_finished))
+ else:
+  result = export_thread.start(Exporter.export_async.bind(image, bool(current_entry.sbs), state.to_dictionary(), half_sbs, path, _export_finished))
  if result != OK:
   export_busy = false
   _notice("Could not start export: " + error_string(result))
@@ -582,6 +586,16 @@ func _export_finished(result: Error, path: String) -> void:
   export_thread.wait_to_finish()
  export_busy = false
  _notice("Saved to exports: " + path.get_file() if result == OK else "Export failed: " + error_string(result))
+
+func _shared_export_finished(result: Dictionary) -> void:
+ if export_thread != null and export_thread.is_started():
+  export_thread.wait_to_finish()
+ export_busy = false
+ if result.has("error"):
+  _notice(str(result.error) + " No shared export was saved.")
+ else:
+  _notice("Saved: " + str(result.destination))
+  print("ZDim MediaStore export: " + str(result.uri))
 
 func _exit_tree() -> void:
  if export_thread != null and export_thread.is_started():
@@ -728,8 +742,8 @@ func _build_conversion_ui() -> void:
 func _refresh_conversion_panel() -> void:
  if conversion_panel == null:
   return
- var shown := str(displayed_conversion.get("model_name", "Original"))
- conversion_panel.summary = "Selected: %s · %s\nDisplayed: %s · Depth %.0f%% · Plane %.2f\n%s" % [conversion.model_name(), conversion.quality_name(), shown, conversion.strength * 100, conversion.screen_plane, str(conversion.message).left(100)]
+ var shown := str(displayed_conversion.get("model_name", "Original")) + (" / " + str(displayed_conversion.get("quality", "")) if not displayed_conversion.is_empty() else "")
+ conversion_panel.summary = "Selected: %s · %s\nDisplayed: %s · Depth %.0f%% · Plane %.2f\n%s" % [conversion.model_name(), conversion.quality_name(), shown, conversion.strength * 100, conversion.screen_plane, str(conversion.message).left(160)]
  conversion_panel.refresh()
 
 func _set_conversion_open(value: bool) -> void:
@@ -757,7 +771,7 @@ func _conversion_action(command: String) -> void:
   "model": conversion.select_next_model()
   "quality":
    if not conversion.busy:
-    conversion.high_quality = not conversion.high_quality
+    conversion.quality = (conversion.quality + 1) % conversion.QUALITIES.size()
   "convert": conversion.start(original_entry)
   "original": _show_original()
   "result":
