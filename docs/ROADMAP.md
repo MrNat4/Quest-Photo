@@ -98,3 +98,12 @@ All three model choices, both quality modes, saved comparisons, genuine
 depth reprojection, adjustments, original restoration and exports are implemented.
 Headset inference/quality/performance and Windows GUI execution remain unverified.
 See ANDROID_BUILD_QUICKSTART.md and verification/android-integration.
+
+## 0.3.1 quality/export update — 2026-10-31
+
+Three quality modes, image-guided depth refinement, subpixel surface coverage,
+separate raw/preview caches, processing timings and MediaStore Pictures/Z-Dim
+exports are implemented in GDScript. No new native dependency or APK build.
+See [the 0.3.1 notes](QUALITY_EXPORT_031.md) for source-update steps and measured
+desktop comparisons. Headset visual quality, JNI/MediaStore operation and
+File Manager+ visibility require physical testing; no on-device result is claimed.

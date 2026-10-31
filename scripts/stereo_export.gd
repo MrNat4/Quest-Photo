@@ -92,3 +92,14 @@ static func export_sbs(image: Image, is_sbs: bool, view: Dictionary,
 static func export_async(image: Image, is_sbs: bool, view: Dictionary, half_sbs: bool, path: String, completed: Callable) -> void:
  var result := export_sbs(image, is_sbs, view, half_sbs, path)
  completed.call_deferred(result, path)
+
+## Source encoding stays on the existing worker. Private staging is not a
+## finished export and is removed on success AND failure; no hidden fallback.
+static func export_shared_async(image: Image, is_sbs: bool, view: Dictionary,
+  half_sbs: bool, staging_path: String, completed: Callable) -> void:
+ var err := export_sbs(image, is_sbs, view, half_sbs, staging_path)
+ var result: Dictionary = {"error": error_string(err)}
+ if err == OK:
+  result = preload("res://scripts/shared_media_export.gd").publish(staging_path)
+  DirAccess.remove_absolute(staging_path)
+ completed.call_deferred(result)

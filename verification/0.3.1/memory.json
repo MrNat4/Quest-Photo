@@ -1,0 +1,9 @@
+{
+  "command": "Godot 4.6.3 headless tests/test_quality_reconstruction.gd --benchmark",
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "exit_code": 0,
+  "process_peak_rss_bytes": 117329920,
+  "process_wall_seconds": 43.96875940100006,
+  "inference": "NOT RUN; procedural depth supplied to both renderers",
+  "scope": "Linux desktop CPU, not Android/Quest; peak RSS for entire comparison process"
+}

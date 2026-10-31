@@ -79,3 +79,26 @@ func run_tests() -> void:
  check(bounded.get_pixel(0,0) == Color.WHITE, "Constant depth safe and border holes filled")
  var bounded_high: Image = Reprojection.reconstruct(huge,constant,0.02,0.5,true)
  check(bounded_high.get_size() == Vector2i(3072,12), "HQ raises actual reconstruction resolution")
+
+ # Enhanced modes retain fractional translation and the left/right convention.
+ var point := Image.create(400,4,false,Image.FORMAT_RGB8)
+ point.fill(Color.BLACK)
+ point.fill_rect(Rect2i(180,0,1,4),Color.RED)
+ var plane := Image.create(400,4,false,Image.FORMAT_RF)
+ plane.fill(Color(0.2,0,0))
+ for mode in [1,2]:
+  var fractional: Image = Reprojection.reconstruct(point,plane,0.023,0.0,mode)
+  var center := Vector2.ZERO
+  for eye in 2:
+   var mass := 0.0
+   for x in 400:
+    var value := fractional.get_pixel(x+eye*400,2).r
+    center[eye] += x*value
+    mass += value
+   center[eye] /= mass
+  check(absf(center.x-182.3)<0.02 and absf(center.y-177.7)<0.02, "Subpixel pixel-coverage translation accurate in mode "+str(mode))
+ plane.fill_rect(Rect2i(180,0,1,4),Color(0.9,0,0))
+ var thin: Image = Reprojection.reconstruct(point,plane,0.04,0.5,1)
+ check(centroid(thin,0,0)-centroid(thin,1,0)==8.0,"A thin object below 2% depth occupancy retains disparity")
+ var maximum: Image = Reprojection.reconstruct(huge,constant,0.02,0.5,2)
+ check(maximum.get_size()==Vector2i(4096,16),"Maximum retains 2048 per-eye pixels without aspect distortion")

@@ -120,11 +120,11 @@ func _run() -> void:
  # Each model/quality has a separately retained depth result. These are explicitly
  # stored synthetic fixtures; native runtime testing is in the Java suite.
  for model_index in 3:
-  for quality_index in 2:
+  for quality_index in 3:
    service.selected_model = model_index
-   service.high_quality = quality_index == 1
+   service.quality = quality_index
    var comparison_key := Store.key_for(hash,service.MODELS[model_index],service.quality_name())
-   if comparison_key != key:
+   if comparison_key != key and not keys.has(comparison_key):
     keys.append(comparison_key)
     var comparison := record.duplicate(true)
     comparison.model = service.MODELS[model_index]
@@ -136,6 +136,10 @@ func _run() -> void:
    await _settle()
    check(last_record.model_name == service.model_name() and last_record.quality == service.quality_name(), "All three models and both quality modes restore the correct saved result")
    check(FileAccess.get_sha256(Store.ROOT.path_join(comparison_key).path_join("raw.qpd")) == raw_hash, "V3 reciprocal normalization preserves raw depth bytes")
+ check(Store.key_for(hash,"v2_small","High Quality") == Store.key_for(hash,"v2_small","Maximum Quality"), "High and Maximum share the exact 518 inference cache")
+ check(Store.preview_path(key,"High Quality") != Store.preview_path(key,"Maximum Quality"), "Rendering quality has separate cached previews")
+ check(last_record.get("job_inference_ms", -1) == 0 and last_record.get("depth_reused", false), "Maximum reconstructs cached High depth without native inference")
+ check(last_record.has("reconstruction_ms") and last_record.has("total_ms"), "Separate render and total timings are reported")
  check(Store.source_hash(path) == hash, "All comparisons preserve original image hash")
  await _test_viewer(entry,source)
  # Teardown while preparation is active must join a RefCounted worker, not lock
