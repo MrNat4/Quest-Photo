@@ -1,3 +1,7 @@
+# 0.3.2 maintenance — implementation and desktop verification
+
+See [0.3.2 maintenance notes](MAINTENANCE_032.md) for reconstruction, export verification, protected cache clearing, UI colors, tests and limitations. Quest visual quality and the actual Android MediaStore provider remain unverified. No APK was built.
+
 # Progress log
 
 ## 2026-10-27 — resumed inspection
