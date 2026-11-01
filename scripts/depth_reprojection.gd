@@ -8,7 +8,7 @@ extends RefCounted
 const BALANCED_MAX_SIDE := 1024
 const HIGH_MAX_SIDE := 1536
 const MAXIMUM_MAX_SIDE := 2048
-const REVISION := "0.3.1-r1"
+const REVISION := "0.3.2-r1"
 const MAX_INPUT_PIXELS := 32 * 1024 * 1024
 const MAX_DISPARITY := 0.04
 const DEPTH_LAYER_EPSILON := 0.015
@@ -289,6 +289,8 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
    var sign_value := 0.5 if eye == 0 else -0.5
    var shift := separation * sign_value
    var row := y * width
+   var footprints := PackedFloat32Array()
+   footprints.resize(width * 3)
    for x in width:
     var d := values[row + x]
     var center := x + (d - plane) * shift
@@ -298,43 +300,52 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
      left = (center + x - 1 + (values[row + x - 1] - plane) * shift) * 0.5
     if x + 1 < width and absf(d - values[row + x + 1]) < 0.06:
      right = (center + x + 1 + (values[row + x + 1] - plane) * shift) * 0.5
-    # Folded surfaces are occluded; don't rasterize reversed or unbounded spans.
-    if right <= left:
-     continue
-    left = maxf(left, center - 2.0)
-    right = minf(right, center + 2.0)
-    var first := maxi(0, floori(left + 0.5))
-    var last := mini(width - 1, ceili(right + 0.5) - 1)
-    for target in range(first, last + 1):
-     var weight := minf(right, target + 0.5) - maxf(left, target - 0.5)
-     if weight <= 0.00001:
+    footprints[x * 3] = maxf(left, center - 2.0)
+    footprints[x * 3 + 1] = minf(right, center + 2.0)
+    footprints[x * 3 + 2] = center
+   # Resolve immutable front and rear depth bands BEFORE accumulating color.
+   # Incrementally resetting a z/color buffer made overlapping gradients depend
+   # on left-to-right traversal, producing different artifacts in the two eyes.
+   for phase in 3:
+    for x in width:
+     var d := values[row + x]
+     var left := footprints[x * 3]
+     var right := footprints[x * 3 + 1]
+     var center := footprints[x * 3 + 2]
+     if right <= left:
       continue
-     var c := target * 3
-     var source_c := (row + x) * 3
-     var difference := d - nearest[target]
-     if difference > DEPTH_LAYER_EPSILON:
-      # Keep the prior visible layer for fractional foreground coverage.
-      back_depth[target] = nearest[target]
-      back_weights[target] = weights[target]
-      back[c] = colors[c]; back[c + 1] = colors[c + 1]; back[c + 2] = colors[c + 2]
-      nearest[target] = d
-      weights[target] = 0.0
-      colors[c] = 0.0; colors[c + 1] = 0.0; colors[c + 2] = 0.0
-     if d >= nearest[target] - DEPTH_LAYER_EPSILON:
-      nearest[target] = maxf(nearest[target], d)
-      weights[target] += weight
-      colors[c] += rgb[source_c] * weight
-      colors[c + 1] += rgb[source_c + 1] * weight
-      colors[c + 2] += rgb[source_c + 2] * weight
-     elif d >= back_depth[target] - DEPTH_LAYER_EPSILON:
-      if d > back_depth[target] + DEPTH_LAYER_EPSILON:
-       back_weights[target] = 0.0
-       back[c] = 0.0; back[c + 1] = 0.0; back[c + 2] = 0.0
-      back_depth[target] = maxf(back_depth[target], d)
-      back_weights[target] += weight
-      back[c] += rgb[source_c] * weight
-      back[c + 1] += rgb[source_c + 1] * weight
-      back[c + 2] += rgb[source_c + 2] * weight
+     for target in range(maxi(0, floori(left + 0.5)), mini(width - 1, ceili(right + 0.5) - 1) + 1):
+      var weight := minf(right, target + 0.5) - maxf(left, target - 0.5)
+      if weight <= 0.00001:
+       continue
+      if phase == 0:
+       nearest[target] = maxf(nearest[target], d)
+       continue
+      if phase == 1:
+       if d < nearest[target] - DEPTH_LAYER_EPSILON:
+        back_depth[target] = maxf(back_depth[target], d)
+       continue
+      var front := d >= nearest[target] - DEPTH_LAYER_EPSILON
+      if not front and d < back_depth[target] - DEPTH_LAYER_EPSILON:
+       continue
+      # Sample the covered source interval, not a stretched constant pixel.
+      # Adjacent colors contribute only on the same continuous depth surface.
+      var covered := (maxf(left, target - 0.5) + minf(right, target + 0.5)) * 0.5
+      var side_width := center - left if covered < center else right - center
+      var dx := clampf((covered - center) / maxf(2.0 * side_width, 0.00001), -0.5, 0.5)
+      var neighbor := clampi(x + (-1 if dx < 0 else 1), 0, width - 1)
+      var blend := absf(dx) if absf(values[row + neighbor] - d) < 0.06 else 0.0
+      var source_c := (row + x) * 3
+      var neighbor_c := (row + neighbor) * 3
+      var c := target * 3
+      if front:
+       weights[target] += weight
+       for channel in 3:
+        colors[c + channel] += lerpf(rgb[source_c + channel], rgb[neighbor_c + channel], blend) * weight
+      else:
+       back_weights[target] += weight
+       for channel in 3:
+        back[c + channel] += lerpf(rgb[source_c + channel], rgb[neighbor_c + channel], blend) * weight
    for x in width:
     if weights[x] > 0.0:
      var inverse := 1.0 / weights[x]
@@ -342,14 +353,14 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
      colors[c] *= inverse
      colors[c + 1] *= inverse
      colors[c + 2] *= inverse
-   # Missing background uses only the farther side. Maximum uses a short
-   # mirrored texture continuation from that surface, not foreground stretching.
+   # Fill only from the farther surface. Never mirror a hair/face texture.
    _fill_surface_holes(colors, nearest, weights, width, mode == 2)
    var offset := (y * width * 2 + eye * width) * 3
    for x in width:
     var c := x * 3
     var alpha := minf(1.0, weights[x])
     var donor := -1
+    var donor_other := -1
     if alpha > 0.00001 and alpha < 0.999 and back_weights[x] <= 0.00001:
      # Only edge pixels need this search; bound to the disparity footprint.
      for radius in range(1, mini(width, ceili(absf(shift)) + 3)):
@@ -357,8 +368,11 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
       var b := x + radius
       if a >= 0 and weights[a] > 0 and nearest[a] < nearest[x] - 0.04:
        donor = a
-      if b < width and weights[b] > 0 and nearest[b] < nearest[x] - 0.04 and (donor < 0 or nearest[b] < nearest[donor]):
-       donor = b
+      if b < width and weights[b] > 0 and nearest[b] < nearest[x] - 0.04:
+       if donor >= 0 and is_equal_approx(nearest[b], nearest[donor]):
+        donor_other = b
+       elif donor < 0 or nearest[b] < nearest[donor]:
+        donor = b
       if donor >= 0:
        break
     for channel in 3:
@@ -367,7 +381,10 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
       if back_weights[x] > 0.00001:
        color = lerpf(back[c + channel] / back_weights[x], color, alpha)
       elif donor >= 0:
-       color = lerpf(colors[donor * 3 + channel], color, alpha)
+       var background := colors[donor * 3 + channel]
+       if donor_other >= 0:
+        background = (background + colors[donor_other * 3 + channel]) * 0.5
+       color = lerpf(background, color, alpha)
      output[offset + c + channel] = clampi(roundi(color), 0, 255)
  return Image.create_from_data(width * 2, height, false, Image.FORMAT_RGB8, output)
 
@@ -391,14 +408,14 @@ static func _fill_surface_holes(colors: PackedFloat32Array, nearest: PackedFloat
   var similar := left >= 0 and right < width and absf(nearest[left] - nearest[right]) < 0.04
   var direction := -1 if chosen == left else 1
   for gap in range(begin, x):
-   var donor := chosen
-   if texture_extension and not similar:
-    var candidate := chosen + direction * mini(8, absi(gap - chosen))
-    # Never borrow a pixel from another object or another unfilled hole.
-    if candidate >= 0 and candidate < width and weights[candidate] > 0 and absf(nearest[candidate] - nearest[chosen]) < 0.04:
-     donor = candidate
+   var interior := chosen + direction
+   var gradient_ok := texture_extension and not similar and interior >= 0 and interior < width and weights[interior] > 0 and absf(nearest[interior] - nearest[chosen]) < 0.04
    for channel in 3:
-    var value := colors[donor * 3 + channel]
+    var value := colors[chosen * 3 + channel]
     if similar:
      value = lerpf(colors[left * 3 + channel], colors[right * 3 + channel], float(gap - left) / (right - left))
+    elif gradient_ok:
+     # Bounded background gradient; do not duplicate recognizable texture.
+     var slope := clampf(value - colors[interior * 3 + channel], -3.0, 3.0)
+     value = clampf(value + slope * mini(4, absi(gap - chosen)), 0, 255)
     colors[gap * 3 + channel] = value

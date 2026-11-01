@@ -10,6 +10,8 @@ const Loader = preload("res://scripts/photo_loader.gd")
 const Layout = preload("res://scripts/stereo_layout.gd")
 const RuntimeProbe = preload("res://scripts/runtime_image_probe.gd")
 const Conversion = preload("res://scripts/ai/depth_conversion.gd")
+const CacheManager = preload("res://scripts/ai/cache_manager.gd")
+const PROCESS_RED := Color(1.0, 0.22, 0.22)
 const ConversionPanel = preload("res://scripts/ai/conversion_panel.gd")
 var conversion: Node
 var conversion_panel: Node3D
@@ -30,6 +32,12 @@ var right: XRController3D
 var anchor: Node3D
 var panel: MeshInstance3D
 var material: ShaderMaterial
+var notification: Label3D
+var desktop_notice: Label
+var notice_red := false
+var cache_confirmation := ""
+var cache_photo_hash := ""
+var cache_summary := ""
 var status: Label3D
 var help: Label3D
 var desktop_label: Label
@@ -93,6 +101,12 @@ func _build_scene() -> void:
  anchor.add_child(panel)
  status = _label(32, 0.0013)
  anchor.add_child(status)
+ status.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+ notification = _label(25, 0.0013)
+ notification.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+ notification.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ notification.width = 1500
+ anchor.add_child(notification)
  help = _label(24, 0.0012)
  help.text = "Quest Photo — Version " + str(ProjectSettings.get_setting("application/config/version", "unknown")) + "\nLeft grip + B: AI conversion\nLeft grip + Y: GALLERY / IMPORT   A: next   Left grip + A: previous\nX: 2D / stereo   Left grip + X: image layout   B: reset   Y: help\nRight stick: size / rotate   Left stick: pan\nLeft trigger + right stick: zoom / convergence   Right grip: grab\nLeft stick click: recenter   Right stick click: calibration\nRight/left trigger + right stick click: full/half SBS export\nBoth triggers + right stick click: PNG/JPG; + A: swap eyes"
  anchor.add_child(help)
@@ -105,6 +119,10 @@ func _build_scene() -> void:
  desktop_label.position = Vector2(20, 15)
  desktop_label.add_theme_font_size_override("font_size", 19)
  layer.add_child(desktop_label)
+ desktop_label.add_theme_color_override("font_color", Color.WHITE)
+ desktop_notice = Label.new()
+ desktop_notice.add_theme_font_size_override("font_size", 19)
+ layer.add_child(desktop_notice)
  file_dialog = FileDialog.new()
  file_dialog.access = FileDialog.ACCESS_FILESYSTEM
  file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
@@ -240,7 +258,7 @@ func _label(font_size: int, pixel_size: float) -> Label3D:
  label.pixel_size = pixel_size
  label.no_depth_test = false
  label.outline_size = 5
- label.modulate = Color(0.84, 0.9, 0.98)
+ label.modulate = Color.WHITE
  return label
 
 func _controller(tracker_name: String, color: Color) -> XRController3D:
@@ -394,14 +412,30 @@ func _update_labels() -> void:
  status.text = "%s\n%s  |  Zoom %.2fx  |  Size %.2fx" % [title, mode, state.zoom, state.panel_scale]
  if not displayed_conversion.is_empty():
   status.text += "\nDisplayed: %s · %s\nAI %.2fs · reconstruction %.2fs · total %.2fs" % [displayed_conversion.get("model_name", ""), displayed_conversion.get("quality", ""), float(displayed_conversion.get("job_inference_ms", 0)) / 1000.0, float(displayed_conversion.get("reconstruction_ms", 0)) / 1000.0, float(displayed_conversion.get("total_ms", 0)) / 1000.0]
- if Time.get_ticks_msec() < notice_until:
-  status.text += "\n" + last_notice
- help.visible = help_visible
+ var visible_message := last_notice if Time.get_ticks_msec() < notice_until or export_busy else ""
+ var red := notice_red
+ if export_busy:
+  visible_message = "Exporting SBS…"
+  red = true
+ if conversion != null and conversion.busy and not export_busy:
+  visible_message = conversion.message
+  red = true
+ status.modulate = Color.WHITE
+ notification.text = visible_message
+ notification.modulate = PROCESS_RED if red else Color.WHITE
+ notification.visible = not conversion_open
+ notification.position = status.position + Vector3(0, (status.text.count("\n") + 1) * 0.058 + 0.04, 0)
+ desktop_notice.text = visible_message
+ desktop_notice.add_theme_color_override("font_color", PROCESS_RED if red else Color.WHITE)
+ desktop_notice.visible = not xr_active
+ help.visible = help_visible and not conversion_open and not gallery_open
  desktop_label.text = "QUEST PHOTO · desktop preview (%s eye)\n%s\n\nG: gallery   O: import   N/P: next/previous   M: image layout\nT: calibration   Space: 2D/stereo   W/S: size   Q/E: rotate\n+/-: zoom   Arrows: pan   I/J/K/L: position   U/D: distance\nR: reset   [/]: convergence   V: preview eye   F: swap eyes   H: help\nF5: refresh   F6/F7: full/half export   F8: PNG/JPG   Esc: quit\n\n%s" % ["left" if preview_eye == 0 else "right", status.text, decoder_summary]
  if conversion_open:
   desktop_label.text = "AI CONVERSION · C/Esc: close · Arrows: select · Enter: activate\n" + conversion_panel.summary + "\n" + conversion_panel.rows.text
  elif gallery_open:
   desktop_label.text = "GALLERY · Arrows: select   Enter: open   G/Esc: return\nO: import   F5: refresh   M: selected image layout\n" + decoder_summary
+
+ desktop_notice.position = desktop_label.position + Vector2(0, desktop_label.get_minimum_size().y + 12)
 
 func _process(delta: float) -> void:
  diagnostic_timer += delta
@@ -548,7 +582,7 @@ func _toggle_export_format() -> void:
 
 func _export_view(half_sbs: bool) -> void:
  if export_busy:
-  _notice("An export is already running.")
+  _notice("An export is already running.", true)
   return
  if current_entry.is_empty():
   return
@@ -556,12 +590,12 @@ func _export_view(half_sbs: bool) -> void:
  var folder := "user://export-staging" if shared else "user://exports"
  var result := DirAccess.make_dir_recursive_absolute(folder)
  if result != OK:
-  _notice("Cannot create export folder: " + error_string(result))
+  _notice("Cannot create export folder: " + error_string(result), true)
   return
  var texture: Texture2D = material.get_shader_parameter("photograph")
  var image := texture.get_image()
  if image == null:
-  _notice("Cannot read current image for export.")
+  _notice("Cannot read current image for export.", true)
   return
  var filename := "%s_%d_%d.%s.%s" % [str(current_entry.path).get_file().get_basename(), int(Time.get_unix_time_from_system()), Time.get_ticks_msec(), "half-sbs" if half_sbs else "sbs", "jpg" if export_jpeg else "png"]
  var path := folder.path_join(filename)
@@ -577,25 +611,26 @@ func _export_view(half_sbs: bool) -> void:
   result = export_thread.start(Exporter.export_async.bind(image, bool(current_entry.sbs), state.to_dictionary(), half_sbs, path, _export_finished))
  if result != OK:
   export_busy = false
-  _notice("Could not start export: " + error_string(result))
+  _notice("Could not start export: " + error_string(result), true)
  else:
-  _notice("Exporting " + ("half SBS…" if half_sbs else "full SBS…"))
+  _notice("Exporting " + ("half SBS…" if half_sbs else "full SBS…"), true)
 
 func _export_finished(result: Error, path: String) -> void:
  if export_thread != null and export_thread.is_started():
   export_thread.wait_to_finish()
  export_busy = false
- _notice("Saved to exports: " + path.get_file() if result == OK else "Export failed: " + error_string(result))
+ _notice("Saved to exports: " + path.get_file() if result == OK else "Export failed: " + error_string(result), true)
 
 func _shared_export_finished(result: Dictionary) -> void:
  if export_thread != null and export_thread.is_started():
   export_thread.wait_to_finish()
  export_busy = false
  if result.has("error"):
-  _notice(str(result.error) + " No shared export was saved.")
+  _notice(str(result.error) + " No shared export was saved.", true)
  else:
-  _notice("Saved: " + str(result.destination))
+  _notice("Saved: " + str(result.destination), true)
   print("ZDim MediaStore export: " + str(result.uri))
+
 
 func _exit_tree() -> void:
  if export_thread != null and export_thread.is_started():
@@ -617,14 +652,17 @@ func _save_view() -> void:
  if result != OK:
   _notice("Cannot save viewing settings: " + error_string(result))
 
-func _notice(message: String) -> void:
+func _notice(message: String, attention: bool = false) -> void:
  _record_diagnostic("notice", message)
  last_notice = message
- notice_until = Time.get_ticks_msec() + 6000
+ notice_red = attention
+ notice_until = Time.get_ticks_msec() + (12000 if attention else 6000)
+ if conversion_panel != null:
+  _refresh_conversion_panel()
  if status != null:
   _update_labels()
  if gallery != null and gallery_open:
-  gallery.set_status(message.left(150))
+  gallery.set_status(message.left(150), PROCESS_RED if attention else Color.WHITE)
 
 func _open_desktop_file(path: String) -> void:
  var entry := {"path": path, "title": path.get_file(), "sbs": path.get_basename().to_lower().ends_with(".sbs")}
@@ -743,7 +781,15 @@ func _refresh_conversion_panel() -> void:
  if conversion_panel == null:
   return
  var shown := str(displayed_conversion.get("model_name", "Original")) + (" / " + str(displayed_conversion.get("quality", "")) if not displayed_conversion.is_empty() else "")
- conversion_panel.summary = "Selected: %s · %s\nDisplayed: %s · Depth %.0f%% · Plane %.2f\n%s" % [conversion.model_name(), conversion.quality_name(), shown, conversion.strength * 100, conversion.screen_plane, str(conversion.message).left(160)]
+ conversion_panel.summary = "Selected: %s · %s\nDisplayed: %s\nDepth %.0f%% · Plane %.2f" % [conversion.model_name(), conversion.quality_name(), shown, conversion.strength * 100, conversion.screen_plane]
+ conversion_panel.message = last_notice if Time.get_ticks_msec() < notice_until else conversion.message
+ conversion_panel.message_red = notice_red if Time.get_ticks_msec() < notice_until else conversion.message_active
+ if export_busy:
+  conversion_panel.message = "Exporting SBS…"
+  conversion_panel.message_red = true
+ if conversion.busy and not export_busy:
+  conversion_panel.message = conversion.message
+  conversion_panel.message_red = true
  conversion_panel.refresh()
 
 func _set_conversion_open(value: bool) -> void:
@@ -751,6 +797,9 @@ func _set_conversion_open(value: bool) -> void:
   return
  if value and gallery_open:
   _set_gallery_open(false)
+ if not value:
+  cache_confirmation = ""
+  conversion_panel.confirmation = ""
  conversion_open = value
  conversion_panel.visible = value
  # Put the menu just below the image so adjustments remain visible.
@@ -764,7 +813,7 @@ func _set_conversion_open(value: bool) -> void:
 
 func _conversion_status(message: String) -> void:
  _refresh_conversion_panel()
- _notice(message)
+ _notice(message, conversion.message_active)
 
 func _conversion_action(command: String) -> void:
  match command:
@@ -783,6 +832,16 @@ func _conversion_action(command: String) -> void:
   "plane_more": _adjust_depth(0, 0.05)
   "cancel": conversion.cancel()
   "close": _set_conversion_open(false)
+  "cache_usage":
+   cache_summary = CacheManager.describe(CacheManager.inventory())
+   _notice(cache_summary)
+  "cache_photo", "cache_all": _request_cache_clear(command)
+  "cache_cancel":
+   cache_confirmation = ""
+   conversion_panel.confirmation = ""
+   conversion_panel.focus = 0
+   _notice("Cache kept.")
+  "cache_confirm": _confirm_cache_clear()
  _refresh_conversion_panel()
  _update_labels()
 
@@ -833,3 +892,44 @@ func _adjust_depth(intensity: float, plane: float) -> void:
   _notice("Show a saved conversion before adjusting its depth.")
   return
  conversion.adjust(intensity, plane)
+
+func _cache_idle() -> bool:
+ return not conversion.busy and not export_busy and not importer.is_busy() and not photo_loader.is_busy() and gallery.cache.pending_count() == 0
+
+func _request_cache_clear(command: String) -> void:
+ if not _cache_idle():
+  _notice("Wait for conversion, import, thumbnails or export to finish before clearing cache.")
+  return
+ cache_photo_hash = ""
+ if command == "cache_photo":
+  cache_photo_hash = Conversion.Store.source_hash(str(original_entry.get("path", "")))
+  if cache_photo_hash.is_empty():
+   _notice("Select a readable photo before clearing its cached results.")
+   return
+ var info := CacheManager.inventory(cache_photo_hash)
+ cache_confirmation = command
+ conversion_panel.confirmation = ("Clear cached results for this photo?" if command == "cache_photo" else "Clear ALL conversion / thumbnail cache?") + "\n%.1f MiB · AI depth will need recomputing.\nDepth and viewing settings will be kept." % (float(info.total)/1048576.0)
+ conversion_panel.focus = 0 # Cancel is always the initially selected action.
+ conversion_panel.refresh()
+
+func _confirm_cache_clear() -> void:
+ if cache_confirmation.is_empty(): return
+ if not _cache_idle():
+  _notice("Cache unchanged: processing is active.")
+  return
+ if cache_confirmation == "cache_photo" and cache_photo_hash != Conversion.Store.source_hash(str(original_entry.get("path", ""))):
+  cache_confirmation = ""
+  conversion_panel.confirmation = ""
+  _notice("Photo changed; request cache deletion again.")
+  return
+ var result := CacheManager.clear(cache_photo_hash, true)
+ cache_confirmation = ""
+ conversion_panel.confirmation = ""
+ conversion_panel.focus = 0
+ conversion.forget_completed_result()
+ gallery.cache.forget_memory()
+ _show_original()
+ if result.has("error"):
+  _notice(result.error)
+ else:
+  _notice("Cache: %d files cleared; %d errors; %d unrecognized entries kept.\n%s" % [result.deleted,result.errors.size(),result.skipped,CacheManager.describe(CacheManager.inventory())])

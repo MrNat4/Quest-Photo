@@ -1,3 +1,7 @@
+# 0.3.2 remaining verification
+
+See [0.3.2 maintenance notes](MAINTENANCE_032.md) for reconstruction, export verification, protected cache clearing, UI colors, tests and limitations. Quest visual quality and the actual Android MediaStore provider remain unverified. No APK was built.
+
 # Current limitations — 0.2.0
 
 - User verified the 0.1.0 VR/stereo foundation on Quest. New gallery, native picker,

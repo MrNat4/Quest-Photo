@@ -31,4 +31,5 @@ static func publish(path: String, backend: RefCounted = null) -> Dictionary:
  if uri.is_empty():
   bridge.abort()
   return {"error": "Pictures/Z-Dim publish failed: " + str(bridge.error)}
- return {"uri": uri, "destination": "Pictures/Z-Dim/" + name}
+ var saved_name: String = bridge.actual_name if bridge is AndroidStore else name
+ return {"uri": uri, "destination": "Pictures/Z-Dim/" + saved_name}

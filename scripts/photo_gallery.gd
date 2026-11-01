@@ -51,6 +51,7 @@ func _quad(size: Vector2, color: Color, position_value: Vector3) -> MeshInstance
 func _label(value: String, font_size: int, position_value: Vector3) -> Label3D:
  var label := Label3D.new()
  label.text = value
+ label.modulate = Color.WHITE
  label.font_size = font_size
  label.pixel_size = 0.0011
  label.outline_size = 3
@@ -122,10 +123,11 @@ func select_index(index: int) -> void:
 func selected_entry_index() -> int:
  return _last_photo_index
 
-func set_status(value: String) -> void:
+func set_status(value: String, color: Color = Color.WHITE) -> void:
  _status_text = value
  if _status != null:
   _status.text = value
+  _status.modulate = color
 
 func _first_valid_focus(preferred: int) -> int:
  if preferred >= PAGE_SIZE:
