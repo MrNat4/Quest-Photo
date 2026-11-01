@@ -91,15 +91,28 @@ static func export_sbs(image: Image, is_sbs: bool, view: Dictionary,
 ## Worker does not lock the viewer object; completion also works when processing is disabled.
 static func export_async(image: Image, is_sbs: bool, view: Dictionary, half_sbs: bool, path: String, completed: Callable) -> void:
  var result := export_sbs(image, is_sbs, view, half_sbs, path)
+ if result == OK: result = verify_encoded(path)
  completed.call_deferred(result, path)
 
 ## Source encoding stays on the existing worker. Private staging is not a
 ## finished export and is removed on success AND failure; no hidden fallback.
 static func export_shared_async(image: Image, is_sbs: bool, view: Dictionary,
   half_sbs: bool, staging_path: String, completed: Callable) -> void:
+ var existed := FileAccess.file_exists(staging_path)
  var err := export_sbs(image, is_sbs, view, half_sbs, staging_path)
+ if err == OK: err = verify_encoded(staging_path)
  var result: Dictionary = {"error": error_string(err)}
  if err == OK:
   result = preload("res://scripts/shared_media_export.gd").publish(staging_path)
+ if not existed and FileAccess.file_exists(staging_path):
   DirAccess.remove_absolute(staging_path)
  completed.call_deferred(result)
+
+static func verify_encoded(path: String) -> Error:
+ var file := FileAccess.open(path, FileAccess.READ)
+ if file == null or file.get_length() < 12: return ERR_FILE_CORRUPT
+ var header := file.get_buffer(8)
+ if path.get_extension().to_lower() == "png":
+  return OK if header == PackedByteArray([137,80,78,71,13,10,26,10]) else ERR_FILE_CORRUPT
+ file.seek(file.get_length()-2)
+ return OK if header[0]==255 and header[1]==216 and file.get_buffer(2)==PackedByteArray([255,217]) else ERR_FILE_CORRUPT

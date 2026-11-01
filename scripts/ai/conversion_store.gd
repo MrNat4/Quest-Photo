@@ -3,6 +3,7 @@ extends RefCounted
 ## Originals are READ-only. Immutable raw depth + metadata live outside photos/.
 const ROOT := "user://conversions"
 const SCHEMA := 1
+const SETTINGS_ROOT := "user://conversion-settings"
 
 static func source_hash(path: String) -> String:
  var raw := path + ".bin" if path.begins_with("res://assets/") and FileAccess.file_exists(path + ".bin") else path
@@ -85,11 +86,14 @@ static func save_adjustments(key: String, strength: float, plane: float) -> Erro
  var c := ConfigFile.new()
  c.set_value("stereo", "strength", clampf(strength, 0, 0.04))
  c.set_value("stereo", "plane", clampf(plane, 0, 1))
- return c.save(ROOT.path_join(key).path_join("adjustments.cfg"))
+ var err := DirAccess.make_dir_recursive_absolute(SETTINGS_ROOT)
+ if err != OK: return err
+ return c.save(SETTINGS_ROOT.path_join(key + ".cfg"))
 
 static func adjustments(key: String) -> Dictionary:
  var c := ConfigFile.new()
- c.load(ROOT.path_join(key).path_join("adjustments.cfg"))
+ var path := SETTINGS_ROOT.path_join(key + ".cfg")
+ c.load(path if FileAccess.file_exists(path) else ROOT.path_join(key).path_join("adjustments.cfg"))
  return {"strength": clampf(float(c.get_value("stereo", "strength", 0.02)), 0, 0.04),
   "plane": clampf(float(c.get_value("stereo", "plane", 0.5)), 0, 1)}
 
@@ -97,7 +101,7 @@ static func valid_key(key: String) -> bool:
  return key.length() == 64 and key.is_valid_hex_number(false)
 
 static func preview_path(key: String, quality: String) -> String:
- return ROOT.path_join(key).path_join("preview-0.3.1-" + str(["Balanced", "High Quality", "Maximum Quality"].find(quality)))
+ return ROOT.path_join(key).path_join("preview-0.3.2-" + str(["Balanced", "High Quality", "Maximum Quality"].find(quality)))
 
 static func load_preview_info(key: String, quality: String) -> Dictionary:
  var path := preview_path(key, quality) + ".json"
@@ -105,3 +109,17 @@ static func load_preview_info(key: String, quality: String) -> Dictionary:
   return {}
  var value: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
  return value if value is Dictionary else {}
+
+static func preserve_adjustments(key: String, legacy: String) -> Error:
+ if not valid_key(key): return ERR_INVALID_PARAMETER
+ var destination := SETTINGS_ROOT.path_join(key + ".cfg")
+ var parent := DirAccess.open(SETTINGS_ROOT.get_base_dir())
+ if parent != null and parent.is_link(SETTINGS_ROOT.get_file()): return ERR_INVALID_DATA
+ var directory := DirAccess.open(SETTINGS_ROOT)
+ if directory != null and (directory.is_link(key + ".cfg") or directory.is_link(key + ".cfg.pending")): return ERR_INVALID_DATA
+ if FileAccess.file_exists(destination): return OK
+ var err := DirAccess.make_dir_recursive_absolute(SETTINGS_ROOT)
+ if err != OK: return err
+ err = DirAccess.copy_absolute(legacy, destination + ".pending")
+ if err != OK: return err
+ return DirAccess.rename_absolute(destination + ".pending", destination)

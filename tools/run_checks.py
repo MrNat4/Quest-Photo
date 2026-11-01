@@ -18,6 +18,7 @@ EDITOR_INFRA_ERRORS = (
 
 with tempfile.TemporaryDirectory(prefix="quest-photo-tests-") as temporary:
     env = dict(os.environ)
+    env["QUEST_PHOTO_TEST_ISOLATED"] = "1"
     for key, leaf in (("XDG_DATA_HOME", "data"), ("XDG_CONFIG_HOME", "config"), ("XDG_CACHE_HOME", "cache")):
         env[key] = str(Path(temporary) / leaf)
     base = [GODOT, "--headless", "--xr-mode", "off", "--path", str(PROJECT)]
@@ -31,6 +32,8 @@ with tempfile.TemporaryDirectory(prefix="quest-photo-tests-") as temporary:
         ("ai_conversion", base + ["--script", "res://tests/test_ai_conversion.gd"]),
         ("quality_reconstruction", base + ["--script", "res://tests/test_quality_reconstruction.gd"]),
         ("depth_reprojection", base + ["--script", "res://tests/test_depth_reprojection.gd"]),
+        ("maintenance_032", base + ["--script", "res://tests/test_maintenance_032.gd"]),
+        ("media_verification_032", base + ["--script", "res://tests/test_media_verification_032.gd"]),
         ("shared_media", base + ["--script", "res://tests/test_shared_media_export.gd"]),
         ("export_protection", base + ["--script", "res://tests/test_export_protection.gd"]),
         ("storage", base + ["--script", "res://tests/test_storage.gd"]),

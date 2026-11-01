@@ -20,6 +20,7 @@ var strength := 0.02
 var screen_plane := 0.5
 var busy := false
 var message := ""
+var message_active := false
 var backend: Object
 var _thread: Thread
 var _stage := ""
@@ -55,6 +56,7 @@ func select_next_model() -> void:
 
 func _status(value: String) -> void:
  message = value
+ message_active = busy
  status_changed.emit(value)
 
 func start(entry: Dictionary) -> void:
@@ -105,6 +107,10 @@ func _process(delta: float) -> void:
    _source = result.source
    _job["source_sha256"] = result.hash
    _job["raw_path"] = result.raw_path
+   if FileAccess.file_exists(Store.SETTINGS_ROOT.path_join(_key + ".cfg")):
+    var kept := Store.adjustments(_key)
+    strength = kept.strength
+    screen_plane = kept.plane
    if not result.cached.is_empty():
     _record = result.cached
     _record["quality"] = _job.quality
@@ -216,3 +222,12 @@ func _exit_tree() -> void:
  # Native cancellation may still be finishing; never delete its active input here.
  if backend != null:
   backend.release_model()
+
+func forget_completed_result() -> void:
+ if busy: return
+ _completed_context.clear()
+ _source = null
+ _depth = null
+ _record.clear()
+ _key = ""
+ _worker = null

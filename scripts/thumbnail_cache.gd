@@ -164,3 +164,9 @@ func _exit_tree() -> void:
   _thread.wait_to_finish()
  _thread = null
  _active.clear()
+
+func forget_memory() -> void:
+ _revision += 1
+ cancel_pending()
+ _textures.clear()
+ _lru.clear()
