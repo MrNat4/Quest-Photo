@@ -1,0 +1,40 @@
+name: Publish verified Quest Photo 0.3.3 source
+on:
+  push:
+    branches: [main]
+    paths: ['releases/quest-photo-0.3.3-source.zip', '.github/workflows/release-033.yml']
+permissions:
+  contents: write
+jobs:
+  publish-verified-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify the existing archive and matching source (no build)
+        run: |
+          cd releases
+          sha256sum -c quest-photo-0.3.3-source.zip.sha256
+          cd ..
+          python3 - <<'PY'
+          import hashlib, pathlib, zipfile, json
+          with zipfile.ZipFile('releases/quest-photo-0.3.3-source.zip') as z:
+              assert z.testzip() is None
+              prefix = 'quest-photo-0.3.3/'
+              info = json.loads(z.read(prefix + 'PACKAGE.json'))
+              assert info['version'] == '0.3.3'
+              for line in z.read(prefix + 'SOURCE-MANIFEST.sha256').decode().splitlines():
+                  expected, path = line.split('  ', 1)
+                  assert hashlib.sha256(z.read(prefix + path)).hexdigest() == expected, path
+                  assert hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest() == expected, path
+          print('Archive and checked-out source match; no compilation or model processing.')
+          PY
+      - name: Publish complete source release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v0.3.3 \
+            releases/quest-photo-0.3.3-source.zip \
+            releases/quest-photo-0.3.3-source.zip.sha256 \
+            --target "$GITHUB_SHA" --title 'Quest Photo 0.3.3' --latest \
+            --notes-file docs/RELEASE_033.md
