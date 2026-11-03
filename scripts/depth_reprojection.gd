@@ -8,7 +8,7 @@ extends RefCounted
 const BALANCED_MAX_SIDE := 1024
 const HIGH_MAX_SIDE := 1536
 const MAXIMUM_MAX_SIDE := 2048
-const REVISION := "0.3.2-r1"
+const REVISION := "0.3.3-r1"
 const MAX_INPUT_PIXELS := 32 * 1024 * 1024
 const MAX_DISPARITY := 0.04
 const DEPTH_LAYER_EPSILON := 0.015
@@ -297,9 +297,15 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
     var left := center - 0.5
     var right := center + 0.5
     if x > 0 and absf(d - values[row + x - 1]) < 0.06:
-     left = (center + x - 1 + (values[row + x - 1] - plane) * shift) * 0.5
+     var previous := x - 1 + (values[row + x - 1] - plane) * shift
+     # Never connect a folded or highly magnified projected interval. Such
+     # connections stretch contour colors or invert a thin object's footprint.
+     if center > previous and center - previous <= 2.0:
+      left = (center + previous) * 0.5
     if x + 1 < width and absf(d - values[row + x + 1]) < 0.06:
-     right = (center + x + 1 + (values[row + x + 1] - plane) * shift) * 0.5
+     var following := x + 1 + (values[row + x + 1] - plane) * shift
+     if following > center and following - center <= 2.0:
+      right = (center + following) * 0.5
     footprints[x * 3] = maxf(left, center - 2.0)
     footprints[x * 3 + 1] = minf(right, center + 2.0)
     footprints[x * 3 + 2] = center

@@ -88,6 +88,12 @@ public final class QuestDepth extends GodotPlugin {
         loadedModel = "";
     }
 
+    /** Called from Godot's export worker; no inference or reconstruction involved. */
+    @UsedByGodot public String export_image(String path, String mime) {
+        if (getActivity() == null) return "{\"error\":\"Android activity unavailable for export\"}";
+        return SharedImageExport.publish(getActivity().getApplicationContext().getContentResolver(), path, mime);
+    }
+
     private void convert(String modelPath, String imagePath, String outputPath,
                          int resolution, boolean inverseDepth) {
         long startTime = SystemClock.elapsedRealtime();

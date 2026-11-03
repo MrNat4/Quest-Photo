@@ -171,6 +171,10 @@ func _start_reconstruction(save_raw: bool = false) -> void:
  _worker._key = _key
  _start_worker(_worker.reconstruct.bind(save_raw, strength, screen_plane))
 
+func apply_adjustments(depth_value: float, plane_value: float) -> void:
+ if not is_finite(depth_value) or not is_finite(plane_value): return
+ adjust(clampf(depth_value,0,0.04)-strength,clampf(plane_value,0,1)-screen_plane)
+
 func adjust(delta_strength: float, delta_plane: float) -> void:
  if busy or _completed_context.is_empty():
   _status("Show a saved conversion before adjusting its depth.")
@@ -200,6 +204,9 @@ func cancel() -> void:
 
 func _finish_error(value: String) -> void:
  busy = false
+ if _stage == "reconstruct" and not _completed_context.is_empty():
+  strength = float(_completed_context.record.get("strength",strength))
+  screen_plane = float(_completed_context.record.get("screen_plane",screen_plane))
  _stage = ""
  _cleanup()
  _status(value)

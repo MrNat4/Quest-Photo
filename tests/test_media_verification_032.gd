@@ -1,8 +1,8 @@
 extends SceneTree
-const Android = preload("res://scripts/android_media_store.gd")
+const Android = preload("res://tests/reference/android_media_store_032.gd")
 var checks := 0
 var failures := 0
-class MockAndroid extends "res://scripts/android_media_store.gd":
+class MockAndroid extends "res://tests/reference/android_media_store_032.gd":
  var failure := ""
  var calls: Array[String] = []
  func _init() -> void:

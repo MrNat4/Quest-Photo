@@ -471,7 +471,9 @@ func _process_controllers(delta: float) -> void:
   var menu: Node3D = conversion_panel if conversion_open else gallery
   dragging = false
   var axis := r if r.length() > l.length() else l
-  if axis.length() < 0.25:
+  if conversion_open and conversion_panel.slider_input(axis,delta):
+   gallery_stick_latched = true
+  elif axis.length() < 0.25:
    gallery_stick_latched = false
   elif axis.length() > 0.65 and not gallery_stick_latched:
    gallery_stick_latched = true
@@ -681,8 +683,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
   return
  if conversion_open:
   match event.keycode:
-   KEY_UP, KEY_LEFT: conversion_panel.move_focus(Vector2.UP)
-   KEY_DOWN, KEY_RIGHT: conversion_panel.move_focus(Vector2.DOWN)
+   KEY_UP: conversion_panel.move_focus(Vector2.UP)
+   KEY_LEFT: conversion_panel.move_focus(Vector2.LEFT)
+   KEY_DOWN: conversion_panel.move_focus(Vector2.DOWN)
+   KEY_RIGHT: conversion_panel.move_focus(Vector2.RIGHT)
    KEY_ENTER, KEY_KP_ENTER: conversion_panel.activate()
    KEY_ESCAPE: _set_conversion_open(false)
   _update_labels()
@@ -781,7 +785,7 @@ func _refresh_conversion_panel() -> void:
  if conversion_panel == null:
   return
  var shown := str(displayed_conversion.get("model_name", "Original")) + (" / " + str(displayed_conversion.get("quality", "")) if not displayed_conversion.is_empty() else "")
- conversion_panel.summary = "Selected: %s · %s\nDisplayed: %s\nDepth %.0f%% · Plane %.2f" % [conversion.model_name(), conversion.quality_name(), shown, conversion.strength * 100, conversion.screen_plane]
+ conversion_panel.summary = "Selected: %s · %s\nDisplayed: %s\nDepth %.2f%% · Plane %.2f" % [conversion.model_name(), conversion.quality_name(), shown, conversion.strength * 100, conversion.screen_plane]
  conversion_panel.message = last_notice if Time.get_ticks_msec() < notice_until else conversion.message
  conversion_panel.message_red = notice_red if Time.get_ticks_msec() < notice_until else conversion.message_active
  if export_busy:
@@ -790,6 +794,9 @@ func _refresh_conversion_panel() -> void:
  if conversion.busy and not export_busy:
   conversion_panel.message = conversion.message
   conversion_panel.message_red = true
+ conversion_panel.editing_allowed = not conversion.busy
+ var identity := str(original_entry.get("path", "")) + ":" + str(displayed_conversion.get("key", "original")) + ":" + str(displayed_conversion.get("quality", ""))
+ conversion_panel.pending.sync(identity, conversion.strength, conversion.screen_plane)
  conversion_panel.refresh()
 
 func _set_conversion_open(value: bool) -> void:
@@ -826,10 +833,15 @@ func _conversion_action(command: String) -> void:
   "result":
    if not conversion.busy:
     _compare_saved_result()
-  "less": _adjust_depth(-0.0025, 0)
-  "more": _adjust_depth(0.0025, 0)
-  "plane_less": _adjust_depth(0, -0.05)
-  "plane_more": _adjust_depth(0, 0.05)
+  "apply":
+   if conversion.busy:
+    _notice("Wait for the current reconstruction or cancel it.")
+   elif displayed_conversion.is_empty():
+    _notice("Show a saved conversion before applying depth and plane.")
+   elif conversion_panel.pending.changed():
+    conversion.apply_adjustments(conversion_panel.pending.depth(), conversion_panel.pending.plane())
+   else:
+    _notice("Depth and plane are unchanged.")
   "cancel": conversion.cancel()
   "close": _set_conversion_open(false)
   "cache_usage":
@@ -866,6 +878,7 @@ func _conversion_ready(image: Image, record: Dictionary) -> void:
  current_entry = original_entry.duplicate(true)
  current_entry["sbs"] = true
  displayed_conversion = record
+ conversion_panel.pending.sync("", conversion.strength, conversion.screen_plane, true)
  state.stereo_enabled = true
  material.set_shader_parameter("photograph", ImageTexture.create_from_image(image))
  material.set_shader_parameter("is_sbs", true)

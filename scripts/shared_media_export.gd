@@ -10,7 +10,9 @@ static func publish(path: String, backend: RefCounted = null) -> Dictionary:
  var file := FileAccess.open(path, FileAccess.READ)
  if file == null or file.get_length() == 0:
   return {"error": "Cannot read the finished export."}
- var bridge: RefCounted = AndroidStore.new() if backend == null else backend
+ if backend == null:
+  return AndroidStore.publish_file(path, "image/png" if extension == "png" else "image/jpeg")
+ var bridge: RefCounted = backend
  # UUID-sized randomness plus timestamp; MediaStore additionally allocates a
  # unique filename if any collision exists. Source name is never a destination.
  var token := Crypto.new().generate_random_bytes(16).hex_encode()
@@ -31,5 +33,5 @@ static func publish(path: String, backend: RefCounted = null) -> Dictionary:
  if uri.is_empty():
   bridge.abort()
   return {"error": "Pictures/Z-Dim publish failed: " + str(bridge.error)}
- var saved_name: String = bridge.actual_name if bridge is AndroidStore else name
+ var saved_name: String = name
  return {"uri": uri, "destination": "Pictures/Z-Dim/" + saved_name}
