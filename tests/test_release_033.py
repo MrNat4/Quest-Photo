@@ -6,7 +6,7 @@ class DeliveryTests(unittest.TestCase):
  def test_versions_and_gradle(self):
   self.assertIn('config/version="0.3.3"',(ROOT/'project.godot').read_text())
   p=(ROOT/'export_presets.cfg').read_text()
-  for value in ['version/name="0.3.3"','version/code=6','quest-photo-0.3.3-debug.apk','plugins/QuestDepth=true','gradle_build/use_gradle_build=true','package/unique_name="org.questphoto.viewer"']:
+  for value in ['version/name="0.3.3"','version/code=6','quest-photo-0.3.3-debug.apk','plugins/QuestDepth=true','gradle_build/use_gradle_build=true','package/unique_name="org.questphoto.viewer"','gradle_build/min_sdk="26"','include_filter="*.json,*.bin,*.txt"']:
    self.assertIn(value,p)
  def test_components_match_sources_and_hashes(self):
   p=ROOT/'android/plugins';info=json.loads((p/'components.json').read_text())

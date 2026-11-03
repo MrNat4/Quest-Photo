@@ -78,6 +78,7 @@ func _run() -> void:
  app.conversion=original_conversion
  app.free()
  _geometry()
+ _portrait()
  report["checks"]=checks;report["failures"]=failures
  DirAccess.make_dir_recursive_absolute("res://build/quality033")
  var f:=FileAccess.open("res://build/quality033/report.json",FileAccess.WRITE);f.store_string(JSON.stringify(report,"  "));f.close()
@@ -113,7 +114,14 @@ func _geometry() -> void:
      var p:=a.get_pixel(x+eye*w,y);var q:=b.get_pixel(w-1-x+(1-eye)*w,y)
      for c in 3:error+=absf(p[c]-q[c])*255
   report[label+"_mirror_mae"]=error/(w*h*6)
+  var right_energy:=0.0
+  for y in h:
+   for x in w:
+    var pixel:=a.get_pixel(x+w,y)
+    right_energy+=pixel.r+pixel.g+pixel.b
+  report[label+"_right_energy"]=right_energy
   a.save_png("res://build/quality033/contours-"+label+".png")
+ check(report["032_right_energy"]==0 and report["033_right_energy"]>1000,"Folded-interval regression: right eye no longer loses every source footprint")
  check(report["033_mirror_mae"]<0.01,"Fold protection remains symmetric between eyes")
  check(before==depth.to_byte_array().hex_encode().sha256_text(),"Refinement never smooths or changes input depth")
  # Flat/low-gradient surface colors and all Balanced output remain unchanged.
@@ -121,3 +129,22 @@ func _geometry() -> void:
  var small:Image=photo.duplicate();small.resize(80,16)
  check(New.reconstruct(small,flat,0.03,0.5,0).get_data()==Old.reconstruct(small,flat,0.03,0.5,0).get_data(),"Balanced output remains byte-identical")
  check(New.reconstruct(small,flat,0,0.5,2).get_data()==Old.reconstruct(small,flat,0,0.5,2).get_data(),"Zero-depth detail remains byte-identical")
+
+func _portrait() -> void:
+ var source:=Image.load_from_file("res://tests/fixtures/quality/astronaut.png")
+ var depth:=Image.create(128,128,false,Image.FORMAT_RF)
+ for y in 128:
+  for x in 128:
+   var r:=Vector2((x*4.0-222)/85,(y*4.0-125)/105).length()
+   depth.set_pixel(x,y,Color(0.65+0.3*sqrt(1-r*r) if r<1 else 0.2,0,0))
+ var before:=depth.get_data()
+ var old:Image=Old.reconstruct(source,depth,0.025,0.5,2)
+ var start:=Time.get_ticks_usec()
+ var current:Image=New.reconstruct(source,depth,0.025,0.5,2)
+ report["033_portrait_ms"]=(Time.get_ticks_usec()-start)/1000.0
+ var a:=old.get_data();var b:=current.get_data();var difference:=0.0
+ for i in a.size():difference+=absi(a[i]-b[i])
+ report["portrait_mae"]=difference/a.size()
+ check(report["portrait_mae"]<0.01,"Conservative fix preserves ordinary portrait detail with identical depth")
+ check(depth.get_data()==before,"Portrait raw depth remains unchanged")
+ current.save_png("res://build/quality033/portrait-033.png")
