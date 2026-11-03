@@ -1,3 +1,5 @@
+> **Current version: 0.3.3.** Use [current build instructions](BUILD_033.md) and [release/testing report](RELEASE_033.md). The material below is a historical development record and may describe superseded limitations.
+
 # 0.3.2 remaining verification
 
 See [0.3.2 maintenance notes](MAINTENANCE_032.md) for reconstruction, export verification, protected cache clearing, UI colors, tests and limitations. Quest visual quality and the actual Android MediaStore provider remain unverified. No APK was built.

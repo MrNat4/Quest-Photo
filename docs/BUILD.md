@@ -1,3 +1,5 @@
+> **Current version: 0.3.3.** Use [current build instructions](BUILD_033.md) and [release/testing report](RELEASE_033.md). The material below is a historical development record and may describe superseded limitations.
+
 > Version 2 maintenance: see [V2_MAINTENANCE.md](V2_MAINTENANCE.md). Preserve your working local Gradle setup; historical baseline instructions below do not supersede it.
 
 # Version 0.2.0 build note

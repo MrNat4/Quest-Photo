@@ -1,3 +1,5 @@
+> **Current version: 0.3.3.** Use [current build instructions](BUILD_033.md) and [release/testing report](RELEASE_033.md). The material below is a historical development record and may describe superseded limitations.
+
 # QuestDepth Android inference integration (0.3.0 development)
 
 This is native inference source, **not a verified Android binary**. This workspace
