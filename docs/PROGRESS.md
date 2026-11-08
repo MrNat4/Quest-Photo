@@ -1,3 +1,5 @@
+> **Current: 0.3.4.** [Build/update and signing](BUILD_034.md) · [Export fix, quality results and headset tests](RELEASE_034.md). Entries below are historical.
+
 > **Current version: 0.3.3.** Use [current build instructions](BUILD_033.md) and [release/testing report](RELEASE_033.md). The material below is a historical development record and may describe superseded limitations.
 
 # 0.3.2 maintenance — implementation and desktop verification

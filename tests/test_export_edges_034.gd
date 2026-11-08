@@ -20,6 +20,10 @@ func check(ok:bool, message:String) -> void:
  if not ok:failures+=1;push_error(message)
 func _initialize() -> void: _run.call_deferred()
 func _run() -> void:
+ if OS.get_environment("QUEST_PHOTO_TEST_ISOLATED") != "1":
+  push_error("Run tools/run_checks.py; diagnostic file tests require isolated storage.")
+  quit(1)
+  return
  var native:=NativeRegistry.new()
  check(Bridge.publish_file("user://test.png","image/png",native).has("destination"),"Java registry capability permits export")
  check(native.lookups==1 and native.calls==1,"JNI capability lookup actually used")
