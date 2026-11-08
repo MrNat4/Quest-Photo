@@ -1,1 +1,0 @@
-Original synthetic RGB quadrant fixtures generated with Pillow; CC0-1.0. 32x24 pixel red/green/blue/yellow quadrants. JPEG fixtures carry EXIF orientation 1 through 8; static lossy/lossless WebP and two-frame animated WebP exercise runtime codec paths. No image is a user photograph.
