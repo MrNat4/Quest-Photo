@@ -1,8 +1,8 @@
 extends Node3D
 ## Existing controller menu, paged to prevent settings/status text overlap.
 signal action(command: String)
-const COMMANDS := ["model", "quality", "convert", "original", "result", "cancel", "depth_slider", "plane_slider", "apply", "cache_usage", "cache_photo", "cache_all", "close"]
-const LABELS := ["Model", "Quality", "Convert / show saved", "Original 2D", "Compare next saved model", "Cancel processing", "Depth", "Screen plane", "APPLY CHANGES", "Cache storage usage", "Clear Cached Results for Current Photo", "Clear All Cache", "Close"]
+const COMMANDS := ["model", "quality", "convert", "original", "result", "cancel", "depth_slider", "plane_slider", "apply", "cache_usage", "cache_photo", "cache_all", "depth_map", "close"]
+const LABELS := ["Model", "Quality", "Convert / show saved", "Original 2D", "Compare next saved model", "Cancel processing", "Depth", "Screen plane", "APPLY CHANGES", "Cache storage usage", "Clear Cached Results for Current Photo", "Clear All Cache", "Depth map / return to photo", "Close"]
 const RED := Color(1.0, 0.22, 0.22)
 const PAGE_SIZE := 6
 var focus := 0

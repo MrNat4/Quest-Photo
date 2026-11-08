@@ -1,0 +1,38 @@
+.method public export_image(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+    .registers 4
+    .param p1, "path"    # Ljava/lang/String;
+    .param p2, "mime"    # Ljava/lang/String;
+    .annotation runtime Lorg/godotengine/godot/plugin/UsedByGodot;
+    .end annotation
+
+    .line 93
+    invoke-virtual {p0}, Lorg/questphoto/depth/QuestDepth;->getActivity()Landroid/app/Activity;
+
+    move-result-object v0
+
+    if-nez v0, :cond_9
+
+    const-string v0, "{\"error\":\"Android activity unavailable for export\"}"
+
+    return-object v0
+
+    .line 94
+    :cond_9
+    invoke-virtual {p0}, Lorg/questphoto/depth/QuestDepth;->getActivity()Landroid/app/Activity;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Landroid/app/Activity;->getApplicationContext()Landroid/content/Context;
+
+    move-result-object v0
+
+    invoke-virtual {v0}, Landroid/content/Context;->getContentResolver()Landroid/content/ContentResolver;
+
+    move-result-object v0
+
+    invoke-static {v0, p1, p2}, Lorg/questphoto/depth/SharedImageExport;->publish(Landroid/content/ContentResolver;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+
+    move-result-object v0
+
+    return-object v0
+.end method

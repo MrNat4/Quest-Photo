@@ -1,0 +1,27 @@
+{
+  "version": "0.3.4",
+  "version_code": 7,
+  "package": "org.questphoto.viewer",
+  "sha256": "3aee29c92ead49b7b568fd8309ebc4ea823858f90327c038a02b7bbdf4de457c",
+  "bytes": 100038414,
+  "arm64_libraries": [
+    "lib/arm64-v8a/libc++_shared.so",
+    "lib/arm64-v8a/libgodot_android.so",
+    "lib/arm64-v8a/libonnxruntime.so",
+    "lib/arm64-v8a/libonnxruntime4j_jni.so",
+    "lib/arm64-v8a/libopenxr_loader.so"
+  ],
+  "license_files": [
+    "assets/assets/licenses/ONNXRuntime-LICENSE.txt",
+    "assets/assets/licenses/ONNXRuntime-ThirdPartyNotices.txt",
+    "assets/models/licenses/Depth-Anything-3-LICENSE.txt",
+    "assets/models/licenses/Depth-Anything-V2-LICENSE.txt"
+  ],
+  "questdepth_manifest_registration": true,
+  "public_export_image_in_dex": true,
+  "runtime_UsedByGodot_annotation_in_dex": true,
+  "signature_verified": true,
+  "real_models_present": false,
+  "device_execution": false,
+  "note": "Actual model-free application export verified; cloud test signing key is not known to match the user Windows signing identity."
+}

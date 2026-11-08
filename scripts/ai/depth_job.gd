@@ -163,3 +163,10 @@ func reconstruct(save_raw: bool, intensity: float, plane: float) -> Dictionary:
   return {"error": "Cannot finalize reconstruction metadata."}
  return {"image": image, "record": _record, "raw_path": _job.raw_path}
 
+
+func diagnostic(path: String, inverse_depth: bool) -> Dictionary:
+ if is_cancelled(): return {"error":"Depth diagnostic cancelled."}
+ var image: Image = preload("res://scripts/ai/depth_diagnostic.gd").render(Store.read_depth(path),inverse_depth)
+ if image == null: return {"error":"Cannot read saved AI depth for diagnostic view."}
+ if is_cancelled(): return {"error":"Depth diagnostic cancelled."}
+ return {"image":image}

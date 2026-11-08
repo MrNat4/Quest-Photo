@@ -101,7 +101,7 @@ static func valid_key(key: String) -> bool:
  return key.length() == 64 and key.is_valid_hex_number(false)
 
 static func preview_path(key: String, quality: String) -> String:
- return ROOT.path_join(key).path_join("preview-0.3.3-" + str(["Balanced", "High Quality", "Maximum Quality"].find(quality)))
+ return ROOT.path_join(key).path_join("preview-0.3.4-" + str(["Balanced", "High Quality", "Maximum Quality"].find(quality)))
 
 static func load_preview_info(key: String, quality: String) -> Dictionary:
  var path := preview_path(key, quality) + ".json"

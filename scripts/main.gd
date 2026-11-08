@@ -18,6 +18,7 @@ var conversion_panel: Node3D
 var conversion_open := false
 var original_entry: Dictionary = {}
 var displayed_conversion: Dictionary = {}
+var diagnostic_texture: Texture2D
 var state = State.new()
 var library = Library.new()
 var current_index := 0
@@ -334,6 +335,7 @@ func show_photo(index: int) -> void:
  _display_photo(candidate_index, entry, texture)
 
 func _display_photo(index: int, entry: Dictionary, texture: Texture2D) -> void:
+ diagnostic_texture = null
  _save_view()
  current_index = index
  current_entry = entry
@@ -409,6 +411,7 @@ func _update_labels() -> void:
  var mode := "STEREO" if bool(current_entry.get("sbs", false)) and state.stereo_enabled else "2D"
  if not bool(current_entry.get("sbs", false)):
   mode += " · Left grip + B: AI conversion"
+ if diagnostic_texture != null: mode = "DEPTH DIAGNOSTIC · white = near · black = far"
  status.text = "%s\n%s  |  Zoom %.2fx  |  Size %.2fx" % [title, mode, state.zoom, state.panel_scale]
  if not displayed_conversion.is_empty():
   status.text += "\nDisplayed: %s · %s\nAI %.2fs · reconstruction %.2fs · total %.2fs" % [displayed_conversion.get("model_name", ""), displayed_conversion.get("quality", ""), float(displayed_conversion.get("job_inference_ms", 0)) / 1000.0, float(displayed_conversion.get("reconstruction_ms", 0)) / 1000.0, float(displayed_conversion.get("total_ms", 0)) / 1000.0]
@@ -583,6 +586,9 @@ func _toggle_export_format() -> void:
  _notice("Export format: " + ("JPG" if export_jpeg else "PNG"))
 
 func _export_view(half_sbs: bool) -> void:
+ if diagnostic_texture != null:
+  _notice("Return from the depth diagnostic to your photo before exporting SBS.",true)
+  return
  if export_busy:
   _notice("An export is already running.", true)
   return
@@ -775,6 +781,7 @@ func _build_conversion_ui() -> void:
  add_child(conversion)
  conversion.status_changed.connect(_conversion_status)
  conversion.result_ready.connect(_conversion_ready)
+ conversion.depth_ready.connect(_depth_ready)
  conversion_panel = ConversionPanel.new()
  conversion_panel.visible = false
  add_child(conversion_panel)
@@ -830,6 +837,7 @@ func _conversion_action(command: String) -> void:
     conversion.quality = (conversion.quality + 1) % conversion.QUALITIES.size()
   "convert": conversion.start(original_entry)
   "original": _show_original()
+  "depth_map": _toggle_depth_map()
   "result":
    if not conversion.busy:
     _compare_saved_result()
@@ -875,6 +883,7 @@ func _conversion_ready(image: Image, record: Dictionary) -> void:
  if str(record.get("source_path", "")) != str(original_entry.get("path", "")):
   _notice("Conversion saved for the earlier photo.")
   return
+ diagnostic_texture = null
  current_entry = original_entry.duplicate(true)
  current_entry["sbs"] = true
  displayed_conversion = record
@@ -893,6 +902,7 @@ func _show_original() -> void:
  if image == null:
   _notice(library.error_message)
   return
+ diagnostic_texture = null
  current_entry = original_entry.duplicate(true)
  displayed_conversion = {}
  material.set_shader_parameter("photograph", ImageTexture.create_from_image(image))
@@ -946,3 +956,22 @@ func _confirm_cache_clear() -> void:
   _notice(result.error)
  else:
   _notice("Cache: %d files cleared; %d errors; %d unrecognized entries kept.\n%s" % [result.deleted,result.errors.size(),result.skipped,CacheManager.describe(CacheManager.inventory())])
+
+func _toggle_depth_map() -> void:
+ if diagnostic_texture != null:
+  material.set_shader_parameter("photograph",diagnostic_texture)
+  material.set_shader_parameter("is_sbs",bool(current_entry.get("sbs",false)))
+  diagnostic_texture=null
+  _apply_view()
+  _notice("Returned to the converted photo.")
+ elif displayed_conversion.is_empty():
+  _notice("Show a saved conversion to inspect its cached AI depth.")
+ else:
+  conversion.show_depth_map()
+
+func _depth_ready(image: Image, record: Dictionary) -> void:
+ if str(record.get("source_path","")) != str(original_entry.get("path","")) or record.get("key") != displayed_conversion.get("key") or displayed_conversion.is_empty(): return
+ if diagnostic_texture == null: diagnostic_texture=material.get_shader_parameter("photograph")
+ material.set_shader_parameter("photograph",ImageTexture.create_from_image(image))
+ material.set_shader_parameter("is_sbs",false)
+ _apply_view()

@@ -32,6 +32,7 @@ with tempfile.TemporaryDirectory(prefix="quest-photo-tests-") as temporary:
         ("ai_conversion", base + ["--script", "res://tests/test_ai_conversion.gd"]),
         ("quality_reconstruction", base + ["--script", "res://tests/test_quality_reconstruction.gd"]),
         ("depth_reprojection", base + ["--script", "res://tests/test_depth_reprojection.gd"]),
+        ("export_edges_034", base + ["--script", "res://tests/test_export_edges_034.gd"]),
         ("refinement_033", base + ["--script", "res://tests/test_refinement_033.gd"]),
         ("maintenance_032", base + ["--script", "res://tests/test_maintenance_032.gd"]),
         ("media_verification_032", base + ["--script", "res://tests/test_media_verification_032.gd"]),

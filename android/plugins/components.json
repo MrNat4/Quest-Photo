@@ -1,9 +1,9 @@
 {
-  "app_version": "0.3.3",
+  "app_version": "0.3.4",
   "godot": "4.6.3",
   "java": "17",
   "onnxruntime": "1.22.0",
-  "source_ref": "v0.3.3",
+  "source_ref": "v0.3.4",
   "sha256": {
     "QuestDepth.gdap": "acbd342f9a1d4db30ad9ed1f9a5375b0139d18a66e33d5e23f1c954942d4d3d8",
     "QuestDepth.aar": "ca954d29e571f5a510d423b18fd3c452cbf16b5a0ee5b7329a54dfb5fad8987b",
@@ -13,5 +13,6 @@
     "DepthFile.java": "a08e495b8d64100a6d7c2bd800acb488f11c2d80b55bca3aff60c74bcfc0f254",
     "QuestDepth.java": "cb546789298f209492136c93c453feeadb69d34d0bcd744ff9572bf507fa9f39",
     "SharedImageExport.java": "2895338d02820168b47a3cbab9a8b5f4cf87aff670add77e98a2ba19d9a21ee7"
-  }
+  },
+  "plugin_binary_origin": "Reused verified 0.3.3 Java build; 0.3.4 fixes Godot JNI capability lookup, not Java implementation"
 }

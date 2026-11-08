@@ -69,5 +69,30 @@ public class SharedImageExportTest {
         }
         provider.fail="";assertTrue(new JSONObject(SharedImageExport.publish(resolver,original.toString(),"image/jpeg")).getBoolean("verified"));
     }
+    @Test public void realEncodedFullHalfPngJpegRoundTrip() throws Exception {
+        Path directory=Files.createTempDirectory("sbs-roundtrip");
+        for(boolean half:Arrays.asList(false,true)) for(boolean jpeg:Arrays.asList(false,true)) {
+            String suffix=(half?".half-sbs":".sbs")+(jpeg?".jpg":".png");
+            Path input=directory.resolve("image"+suffix);
+            android.graphics.Bitmap bitmap=android.graphics.Bitmap.createBitmap(half?16:32,16,android.graphics.Bitmap.Config.ARGB_8888);
+            bitmap.eraseColor(0xff00aaff);
+            try(OutputStream out=Files.newOutputStream(input)) {assertTrue(bitmap.compress(jpeg?android.graphics.Bitmap.CompressFormat.JPEG:android.graphics.Bitmap.CompressFormat.PNG,95,out));}
+            bitmap.recycle();byte[] source=Files.readAllBytes(input);
+            JSONObject result=new JSONObject(SharedImageExport.publish(resolver,input.toString(),jpeg?"image/jpeg":"image/png"));
+            assertTrue(result.toString(),result.getBoolean("verified"));assertTrue(result.getString("destination").endsWith(suffix));
+            File saved=provider.files.get(Uri.parse(result.getString("uri")));
+            assertArrayEquals(source,Files.readAllBytes(saved.toPath()));
+            android.graphics.Bitmap decoded=android.graphics.BitmapFactory.decodeFile(saved.toString());
+            assertNotNull(decoded);assertEquals(half?16:32,decoded.getWidth());assertEquals(16,decoded.getHeight());decoded.recycle();
+            assertArrayEquals(source,Files.readAllBytes(input));Files.delete(input);
+        }
+        Files.delete(directory);
+    }
+    @Test public void exportMethodIsPublicAnnotatedAndGodotCompatible() throws Exception {
+        java.lang.reflect.Method method=QuestDepth.class.getDeclaredMethod("export_image",String.class,String.class);
+        assertTrue(java.lang.reflect.Modifier.isPublic(method.getModifiers()));
+        assertEquals(String.class,method.getReturnType());
+        assertNotNull(method.getAnnotation(org.godotengine.godot.plugin.UsedByGodot.class));
+    }
     @After public void cleanup(){original.delete();for(File file:provider.files.values())file.delete();}
 }

@@ -2,6 +2,7 @@ extends Node
 ## One preparation/reconstruction worker and one native inference job. No mock backend.
 signal status_changed(message: String)
 signal result_ready(image: Image, record: Dictionary)
+signal depth_ready(image: Image, record: Dictionary)
 const Store = preload("res://scripts/ai/conversion_store.gd")
 const Library = preload("res://scripts/photo_library.gd")
 const Reproject = preload("res://scripts/depth_reprojection.gd")
@@ -101,6 +102,12 @@ func _process(delta: float) -> void:
    return
   if result.has("error"):
    _finish_error(result.error)
+   return
+  if _stage == "diagnostic":
+   busy = false
+   _stage = ""
+   depth_ready.emit(result.image,_completed_context.record.duplicate(true))
+   _status("Cached AI depth: white = nearer, black = farther. No inference or edits.")
    return
   if _stage == "prepare":
    _key = result.key
@@ -238,3 +245,14 @@ func forget_completed_result() -> void:
  _record.clear()
  _key = ""
  _worker = null
+
+func show_depth_map() -> void:
+ if busy or _completed_context.is_empty():
+  _status("Show a saved conversion and finish processing before inspecting depth.")
+  return
+ _stage="diagnostic"
+ busy=true
+ _cancelled=false
+ _worker=Job.new()
+ _start_worker(_worker.diagnostic.bind(str(_completed_context.job.raw_path),bool(_completed_context.job.inverse_depth)))
+ _status("Loading cached AI depth diagnostic…")

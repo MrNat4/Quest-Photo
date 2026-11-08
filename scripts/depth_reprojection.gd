@@ -8,7 +8,7 @@ extends RefCounted
 const BALANCED_MAX_SIDE := 1024
 const HIGH_MAX_SIDE := 1536
 const MAXIMUM_MAX_SIDE := 2048
-const REVISION := "0.3.3-r1"
+const REVISION := "0.3.4-r1"
 const MAX_INPUT_PIXELS := 32 * 1024 * 1024
 const MAX_DISPARITY := 0.04
 const DEPTH_LAYER_EPSILON := 0.015
@@ -148,7 +148,7 @@ static func _fill_background_holes(colors: PackedFloat32Array, nearest: PackedFl
   # Prefer the farther visible surface; interpolating foreground across a
   # disocclusion would create doubled silhouettes. Interpolate only within a
   # similar-depth surface. At outer borders extend the sole visible neighbour.
-  var similar := left >= 0 and right < width and absf(nearest[left] - nearest[right]) < 0.04
+  var similar := left >= 0 and right < width and absf(nearest[left] - nearest[right]) < DEPTH_LAYER_EPSILON
   var chosen := right if left < 0 else left
   if right < width and left >= 0 and nearest[right] < nearest[left]:
    chosen = right
@@ -273,6 +273,15 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
  for y in height:
   if cancelled.is_valid() and cancelled.call():
    return null
+  # Separate a sharp photographed boundary only when depth also changes.
+  # Pure texture edges on a continuous surface must not become depth edges.
+  var links := PackedByteArray()
+  links.resize(width)
+  for x in range(width-1):
+   var p := y * width + x
+   var delta := absf(values[p+1]-values[p])
+   var contrast := absi(int(rgb[p*3])-rgb[(p+1)*3]) + absi(int(rgb[p*3+1])-rgb[(p+1)*3+1]) + absi(int(rgb[p*3+2])-rgb[(p+1)*3+2])
+   links[x] = 1 if delta < 0.06 and not (delta > DEPTH_LAYER_EPSILON and contrast > 120) else 0
   for eye in 2:
    var nearest := PackedFloat32Array()
    nearest.resize(width); nearest.fill(-1.0)
@@ -296,13 +305,13 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
     var center := x + (d - plane) * shift
     var left := center - 0.5
     var right := center + 0.5
-    if x > 0 and absf(d - values[row + x - 1]) < 0.06:
+    if x > 0 and links[x-1] != 0:
      var previous := x - 1 + (values[row + x - 1] - plane) * shift
      # Never connect a folded or highly magnified projected interval. Such
      # connections stretch contour colors or invert a thin object's footprint.
      if center > previous and center - previous <= 2.0:
       left = (center + previous) * 0.5
-    if x + 1 < width and absf(d - values[row + x + 1]) < 0.06:
+    if x + 1 < width and links[x] != 0:
      var following := x + 1 + (values[row + x + 1] - plane) * shift
      if following > center and following - center <= 2.0:
       right = (center + following) * 0.5
@@ -340,7 +349,8 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
       var side_width := center - left if covered < center else right - center
       var dx := clampf((covered - center) / maxf(2.0 * side_width, 0.00001), -0.5, 0.5)
       var neighbor := clampi(x + (-1 if dx < 0 else 1), 0, width - 1)
-      var blend := absf(dx) if absf(values[row + neighbor] - d) < 0.06 else 0.0
+      var linked := neighbor == x or links[mini(x,neighbor)] != 0
+      var blend := absf(dx) if linked else 0.0
       var source_c := (row + x) * 3
       var neighbor_c := (row + neighbor) * 3
       var c := target * 3
@@ -360,7 +370,7 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
      colors[c + 1] *= inverse
      colors[c + 2] *= inverse
    # Fill only from the farther surface. Never mirror a hair/face texture.
-   _fill_surface_holes(colors, nearest, weights, width, mode == 2)
+   _fill_surface_holes(colors, nearest, weights, width, mode == 2, rgb, values, y, height, shift, plane)
    var offset := (y * width * 2 + eye * width) * 3
    for x in width:
     var c := x * 3
@@ -372,9 +382,9 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
      for radius in range(1, mini(width, ceili(absf(shift)) + 3)):
       var a := x - radius
       var b := x + radius
-      if a >= 0 and weights[a] > 0 and nearest[a] < nearest[x] - 0.04:
+      if a >= 0 and weights[a] > 0 and nearest[a] < nearest[x] - DEPTH_LAYER_EPSILON:
        donor = a
-      if b < width and weights[b] > 0 and nearest[b] < nearest[x] - 0.04:
+      if b < width and weights[b] > 0 and nearest[b] < nearest[x] - DEPTH_LAYER_EPSILON:
        if donor >= 0 and is_equal_approx(nearest[b], nearest[donor]):
         donor_other = b
        elif donor < 0 or nearest[b] < nearest[donor]:
@@ -395,7 +405,9 @@ static func _surface_render(rgb: PackedByteArray, values: PackedFloat32Array,
  return Image.create_from_data(width * 2, height, false, Image.FORMAT_RGB8, output)
 
 static func _fill_surface_holes(colors: PackedFloat32Array, nearest: PackedFloat32Array,
-  weights: PackedFloat32Array, width: int, texture_extension: bool) -> void:
+  weights: PackedFloat32Array, width: int, texture_extension: bool,
+  source: PackedByteArray = PackedByteArray(), depths: PackedFloat32Array = PackedFloat32Array(),
+  row_y: int = 0, height: int = 0, shift: float = 0.0, plane: float = 0.5) -> void:
  var x := 0
  while x < width:
   if weights[x] > 0.0:
@@ -411,11 +423,16 @@ static func _fill_surface_holes(colors: PackedFloat32Array, nearest: PackedFloat
   var chosen := right if left < 0 else left
   if left >= 0 and right < width and nearest[right] < nearest[left]:
    chosen = right
-  var similar := left >= 0 and right < width and absf(nearest[left] - nearest[right]) < 0.04
+  var similar := left >= 0 and right < width and absf(nearest[left] - nearest[right]) < DEPTH_LAYER_EPSILON
   var direction := -1 if chosen == left else 1
   for gap in range(begin, x):
+   # Only true holes use nearby visible background from the ORIGINAL image.
+   # No filled pixel is reused as evidence; no foreground donor is admitted.
+   var donor := Vector4.ZERO
+   if not source.is_empty():
+    donor = _background_donor(source,depths,width,height,gap,row_y,nearest[chosen],shift,plane,4 if texture_extension else 2)
    var interior := chosen + direction
-   var gradient_ok := texture_extension and not similar and interior >= 0 and interior < width and weights[interior] > 0 and absf(nearest[interior] - nearest[chosen]) < 0.04
+   var gradient_ok := texture_extension and not similar and interior >= 0 and interior < width and weights[interior] > 0 and absf(nearest[interior] - nearest[chosen]) < DEPTH_LAYER_EPSILON
    for channel in 3:
     var value := colors[chosen * 3 + channel]
     if similar:
@@ -424,4 +441,34 @@ static func _fill_surface_holes(colors: PackedFloat32Array, nearest: PackedFloat
      # Bounded background gradient; do not duplicate recognizable texture.
      var slope := clampf(value - colors[interior * 3 + channel], -3.0, 3.0)
      value = clampf(value + slope * mini(4, absi(gap - chosen)), 0, 255)
+    if donor.w > 0.0:
+     value = donor[channel] / donor.w
     colors[gap * 3 + channel] = value
+
+## A source-space vertical search, constrained to the farther visible depth layer.
+## No horizontal texture mirroring/extrapolation. Nearest matching rows win, both
+## directions share equal weight. High searches two rows, Maximum four.
+static func _background_donor(rgb: PackedByteArray, depths: PackedFloat32Array,
+  width: int, height: int, target_x: int, target_y: int, background: float,
+  shift: float, plane: float, radius: int) -> Vector4:
+ var sx := target_x - (background-plane)*shift
+ if sx < 0.0 or sx > width-1: return Vector4.ZERO
+ var x0 := floori(sx)
+ var tx := sx-x0
+ for distance in range(1,radius+1):
+  var result := Vector4.ZERO
+  for direction in [-1,1]:
+   var y: int = target_y + direction*distance
+   if y < 0 or y >= height: continue
+   for dx in 2:
+    var x := x0+dx
+    var weight := tx if dx == 1 else 1.0-tx
+    if x >= width or weight <= 0.00001: continue
+    var p := y*width+x
+    if absf(depths[p]-background) > DEPTH_LAYER_EPSILON: continue
+    result.x += rgb[p*3]*weight
+    result.y += rgb[p*3+1]*weight
+    result.z += rgb[p*3+2]*weight
+    result.w += weight
+  if result.w >= 0.5: return result
+ return Vector4.ZERO
